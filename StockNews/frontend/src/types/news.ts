@@ -1,0 +1,45 @@
+/** 감성 분석 결과 */
+export type Sentiment = 'positive' | 'neutral' | 'negative';
+
+/** 뉴스 개별 항목 */
+export interface NewsItem {
+  id: number;
+  title: string;
+  stock_code: string;
+  stock_name: string | null;
+  sentiment: Sentiment;
+  news_score: number;
+  source: string;
+  source_url: string | null;
+  market: string;
+  theme: string | null;
+  published_at: string | null;
+}
+
+/** 종목별 뉴스 스코어 */
+export interface NewsScore {
+  stock_code: string;
+  stock_name: string | null;
+  news_score: number;
+  recency: number;
+  frequency: number;
+  sentiment_score: number;
+  disclosure: number;
+  news_count: number;
+}
+
+/** Top 종목 뉴스 요약 */
+export interface NewsTopItem {
+  stock_code: string;
+  stock_name: string | null;
+  news_score: number;
+  sentiment: Sentiment;
+  news_count: number;
+  market: string;
+}
+
+/** 스코어 타임라인 포인트 */
+export interface TimelinePoint {
+  date: string;
+  score: number;
+}
