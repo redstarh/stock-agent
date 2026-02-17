@@ -102,7 +102,35 @@ def mock_openai(monkeypatch):
     class MockCompletion:
         class Choice:
             class Message:
-                content = '{"sentiment": "positive", "score": 0.8}'
+                content = '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}'
+
+            message = Message()
+
+        choices = [Choice()]
+
+    class MockClient:
+        class Chat:
+            class Completions:
+                @staticmethod
+                def create(**kwargs):
+                    return MockCompletion()
+
+            completions = Completions()
+
+        chat = Chat()
+
+    monkeypatch.setattr("openai.OpenAI", lambda **kwargs: MockClient())
+    return MockClient()
+
+
+@pytest.fixture
+def mock_openai_summary(monkeypatch):
+    """OpenAI API mock (요약 응답)."""
+
+    class MockCompletion:
+        class Choice:
+            class Message:
+                content = '{"summary": "삼성전자가 4분기 사상 최대 실적을 기록했다."}'
 
             message = Message()
 

@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.health import router as health_router
 from app.api.router import api_v1_router
+from app.api.summary import router as summary_router
 from app.api.websocket import router as ws_router
 from app.core.config import settings
 from app.core.database import engine
@@ -42,6 +43,7 @@ app.add_middleware(
 # Routers
 app.include_router(health_router)
 app.include_router(api_v1_router)
+app.include_router(summary_router)
 app.include_router(ws_router)
 
 

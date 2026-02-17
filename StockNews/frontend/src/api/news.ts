@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { NewsScore, NewsTopItem } from '../types/news';
+import type { NewsScore, NewsTopItem, NewsItem } from '../types/news';
 import type { NewsListResponse } from '../types/api';
 
 /** Top 종목 뉴스 조회 */
@@ -23,4 +23,12 @@ export function fetchLatestNews(
 /** 종목별 뉴스 스코어 */
 export function fetchNewsScore(stockCode: string): Promise<NewsScore> {
   return apiClient.get<NewsScore>(`/news/score?stock=${stockCode}`);
+}
+
+/** 특정 날짜 뉴스 조회 */
+export function fetchNewsByDate(
+  stockCode: string,
+  date: string,
+): Promise<NewsItem[]> {
+  return apiClient.get<NewsItem[]>(`/news/latest?stock=${stockCode}&date=${date}`);
 }

@@ -1,14 +1,40 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useNewsScore } from '../hooks/useNewsScore';
+import { fetchNewsByDate } from '../api/news';
 import Loading from '../components/common/Loading';
 import ScoreTimeline from '../components/charts/ScoreTimeline';
 import SentimentPie from '../components/charts/SentimentPie';
+import ChartDrilldown from '../components/charts/ChartDrilldown';
+import FilterPanel, { DEFAULT_FILTERS, type NewsFilters } from '../components/common/FilterPanel';
 import { formatScore } from '../utils/format';
+import type { NewsItem } from '../types/news';
 
 export default function StockDetailPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { score, timeline } = useNewsScore(code ?? '');
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [filters, setFilters] = useState<NewsFilters>(DEFAULT_FILTERS);
+
+  // Fetch news for selected date
+  const newsForDate = useQuery<NewsItem[]>({
+    queryKey: ['newsByDate', code, selectedDate],
+    queryFn: () => fetchNewsByDate(code ?? '', selectedDate ?? ''),
+    enabled: !!code && !!selectedDate,
+  });
+
+  const handlePointClick = (date: string) => {
+    setSelectedDate(date);
+  };
+
+  const handleCloseDrilldown = () => {
+    setSelectedDate(null);
+  };
+
+  // Mock themes for filter panel (in real app, fetch from API)
+  const themes = ['반도체', '2차전지', 'AI/로봇', '바이오', '자동차'];
 
   return (
     <div className="space-y-6">
@@ -45,28 +71,41 @@ export default function StockDetailPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section>
-          <h3 className="mb-3 font-semibold text-gray-700">스코어 타임라인</h3>
-          {timeline.isLoading ? (
-            <Loading message="타임라인 로딩 중..." />
-          ) : (
-            <ScoreTimeline data={timeline.data ?? []} />
-          )}
-        </section>
+      <div className="space-y-6">
+        <FilterPanel filters={filters} themes={themes} onChange={setFilters} />
 
-        <section>
-          <h3 className="mb-3 font-semibold text-gray-700">감성 분포</h3>
-          {score.isLoading ? (
-            <Loading message="감성 데이터 로딩 중..." />
-          ) : (
-            <SentimentPie
-              positive={score.data?.sentiment_score ?? 0}
-              neutral={Math.max(0, 100 - (score.data?.sentiment_score ?? 0) - 20)}
-              negative={20}
-            />
-          )}
-        </section>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section>
+            <h3 className="mb-3 font-semibold text-gray-700">스코어 타임라인</h3>
+            {timeline.isLoading ? (
+              <Loading message="타임라인 로딩 중..." />
+            ) : (
+              <>
+                <ScoreTimeline data={timeline.data ?? []} onPointClick={handlePointClick} />
+                {selectedDate && (
+                  <ChartDrilldown
+                    date={selectedDate}
+                    news={newsForDate.data ?? []}
+                    onClose={handleCloseDrilldown}
+                  />
+                )}
+              </>
+            )}
+          </section>
+
+          <section>
+            <h3 className="mb-3 font-semibold text-gray-700">감성 분포</h3>
+            {score.isLoading ? (
+              <Loading message="감성 데이터 로딩 중..." />
+            ) : (
+              <SentimentPie
+                positive={score.data?.sentiment_score ?? 0}
+                neutral={Math.max(0, 100 - (score.data?.sentiment_score ?? 0) - 20)}
+                negative={20}
+              />
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

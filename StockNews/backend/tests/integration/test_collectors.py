@@ -215,10 +215,53 @@ class TestScheduler:
 
         scheduler = create_scheduler()
         jobs = scheduler.get_jobs()
-        assert len(jobs) >= 1
+        assert len(jobs) >= 3
 
     def test_scheduler_interval(self):
-        """기본 수집 주기가 5분."""
+        """기본 수집 주기가 1분."""
         from app.collectors.scheduler import COLLECTION_INTERVAL_MINUTES
 
-        assert COLLECTION_INTERVAL_MINUTES == 5
+        assert COLLECTION_INTERVAL_MINUTES == 1
+
+    def test_scheduler_job_ids(self):
+        """스케줄러가 3개의 job을 생성하는지 확인."""
+        from app.collectors.scheduler import create_scheduler
+
+        scheduler = create_scheduler()
+        jobs = scheduler.get_jobs()
+        job_ids = {job.id for job in jobs}
+
+        assert "kr_news_collection" in job_ids
+        assert "dart_disclosure_collection" in job_ids
+        assert "us_news_collection" in job_ids
+
+    def test_scheduler_intervals_from_config(self):
+        """각 job이 config에서 설정한 interval을 사용하는지 확인."""
+        from app.collectors.scheduler import create_scheduler
+        from app.core.config import settings
+
+        scheduler = create_scheduler()
+        jobs = {job.id: job for job in scheduler.get_jobs()}
+
+        kr_job = jobs.get("kr_news_collection")
+        dart_job = jobs.get("dart_disclosure_collection")
+        us_job = jobs.get("us_news_collection")
+
+        assert kr_job is not None
+        assert dart_job is not None
+        assert us_job is not None
+
+        # IntervalTrigger의 interval을 분 단위로 확인
+        assert kr_job.trigger.interval.total_seconds() == settings.collection_interval_kr * 60
+        assert dart_job.trigger.interval.total_seconds() == settings.collection_interval_dart * 60
+        assert us_job.trigger.interval.total_seconds() == settings.collection_interval_us * 60
+
+    def test_scheduler_max_instances(self):
+        """모든 job이 max_instances=1로 설정되어 있는지 확인."""
+        from app.collectors.scheduler import create_scheduler
+
+        scheduler = create_scheduler()
+        jobs = scheduler.get_jobs()
+
+        for job in jobs:
+            assert job.max_instances == 1
