@@ -85,3 +85,6 @@ frontend/playwright/.cache/
 *.key
 credentials.json
 secrets/
+
+# OMC state
+.omc/
