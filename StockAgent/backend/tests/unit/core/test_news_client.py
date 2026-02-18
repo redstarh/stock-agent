@@ -10,10 +10,10 @@ from src.core.news_client import NewsClient
 @pytest.fixture
 def mock_stocknews():
     with respx.mock(base_url="http://localhost:8001", assert_all_called=False) as mock:
-        mock.get("/api/v1/news/score", params={"code": "005930"}).respond(json={
-            "code": "005930",
-            "score": 75,
-            "articles": 5,
+        mock.get("/api/v1/news/score", params={"stock": "005930"}).respond(json={
+            "stock_code": "005930",
+            "news_score": 75,
+            "news_count": 5,
         })
         yield mock
 
@@ -50,10 +50,10 @@ async def test_news_service_unavailable():
 @pytest.mark.asyncio
 async def test_news_score_different_stocks(mock_stocknews):
     """서로 다른 종목은 별도 캐시"""
-    mock_stocknews.get("/api/v1/news/score", params={"code": "000660"}).respond(json={
-        "code": "000660",
-        "score": 45,
-        "articles": 2,
+    mock_stocknews.get("/api/v1/news/score", params={"stock": "000660"}).respond(json={
+        "stock_code": "000660",
+        "news_score": 45,
+        "news_count": 2,
     })
     client = NewsClient(base_url="http://localhost:8001", cache_ttl=60)
     score1 = await client.get_score("005930")

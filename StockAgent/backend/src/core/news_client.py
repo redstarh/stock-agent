@@ -33,7 +33,7 @@ class NewsClient:
             async with httpx.AsyncClient(base_url=self._base_url) as client:
                 resp = await client.get(
                     "/api/v1/news/score",
-                    params={"code": stock_code},
+                    params={"stock": stock_code},
                 )
 
             if resp.status_code != 200:
@@ -44,7 +44,7 @@ class NewsClient:
                 return 0
 
             data = resp.json()
-            score = data.get("score", 0)
+            score = data.get("news_score", 0)
 
             # 캐시 저장
             if self._cache_ttl > 0:
