@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 StockAgent - Kiwoom REST API 기반 한국 주식 자동매매 시스템. Mac 환경에서 Windows/VM 없이 키움증권 REST API를 활용한 비동기 자동매매 플랫폼.
 
-**Status**: 전체 구현 완료 (Sprint 0~6, 36개 태스크 완료)
+**Status**: 전체 구현 완료 (Sprint 0~6, 36개 태스크 완료) | 테스트 커버리지 최적화 완료
 
 Separate from the StockNews system - communicates via REST API and Redis pub/sub.
 
@@ -122,12 +122,12 @@ StockAgent/
 │   │   └── models/
 │   │       ├── db_models.py    # B-2: 4 ORM models
 │   │       └── schemas.py      # B-2: Pydantic schemas
-│   └── tests/                  # 109 tests
+│   └── tests/                  # 145 tests (97.59% coverage)
 │       ├── test_setup.py
 │       └── unit/
 │           ├── kiwoom_client/  # auth, market, order, account
 │           ├── core/           # market_data, scanner, strategy, risk, order_executor, trader, learning, report, tuner, news
-│           ├── api/            # trades, reports, strategy, websocket
+│           ├── api/            # account, trades, reports, scanner, strategy, websocket
 │           └── models/         # db_models, schemas
 ├── frontend/
 │   ├── src/
@@ -152,7 +152,7 @@ StockAgent/
 │   │   └── mocks/
 │   │       ├── handlers.ts     # MSW handlers (14 routes)
 │   │       └── server.ts       # MSW test server
-│   └── tests/                  # 56 tests, 14 suites
+│   └── tests/                  # 64 tests, 14 suites (93.52% lines)
 │       ├── jest-env-jsdom.ts   # Custom Jest env (Node 24 compat)
 │       ├── setup.ts            # Jest setup
 │       ├── setup.test.tsx
@@ -180,7 +180,20 @@ StockAgent/
 | 5 | B-13, B-18, F-12, F-13, F-14 | ✅ Complete |
 | 6 | B-17, B-21 | ✅ Complete |
 
-Backend: 109 tests passing | Frontend: 56 tests passing (14 suites)
+Backend: 145 tests passing (97.59% coverage) | Frontend: 64 tests passing, 14 suites (93.52% line coverage)
+
+### Test Coverage Details
+
+**Backend (97.59%):**
+- 100%: api/* (6), config, main, models/* (3), kiwoom_client/* (4), core/market_data, report, scanner, strategy, tuner
+- 95%+: core/learning (97%), risk (97%), news_subscriber (95%), order_executor (98%)
+- 90%+: core/trader (93%), news_client (90%)
+- Excluded: database.py (DB infra, 0%)
+
+**Frontend (93.52% lines):**
+- Components 평균 97.18% lines (6개 100%, 나머지 94%+)
+- lib/api.ts 96.42%, mocks 100%
+- app/* page stubs 제외 (라우터 진입점)
 
 ## Key Design Decisions
 
