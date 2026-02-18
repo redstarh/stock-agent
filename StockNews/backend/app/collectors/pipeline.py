@@ -12,7 +12,7 @@ from app.models.news_event import NewsEvent
 from app.processing.article_scraper import ArticleScraper
 from app.processing.dedup import deduplicate
 from app.processing.sentiment import analyze_sentiment
-from app.processing.stock_mapper import extract_stock_codes
+from app.processing.stock_mapper import code_to_name, extract_stock_codes
 from app.processing.summary import summarize_news
 from app.processing.theme_classifier import classify_theme
 from app.processing.us_stock_mapper import extract_tickers_from_text
@@ -117,6 +117,13 @@ async def process_collected_items(
             # 종목코드 매핑
             stock_code = _map_stock_code(item)
             stock_name = item.get("stock_name", "")
+            if not stock_name and stock_code:
+                market_val = item.get("market", market)
+                if market_val == "US":
+                    from app.processing.us_stock_mapper import ticker_to_name
+                    stock_name = ticker_to_name(stock_code) or ""
+                else:
+                    stock_name = code_to_name(stock_code)
 
             # 기사 본문
             body = body_map.get(source_url)

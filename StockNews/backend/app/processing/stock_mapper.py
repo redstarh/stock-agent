@@ -80,6 +80,17 @@ _ENGLISH_MAP: dict[str, str] = {
     if any(c.isascii() and c.isalpha() for c in name)
 }
 
+# 역매핑: {종목코드: 종목명} (첫 번째 매칭만 사용)
+_CODE_TO_NAME: dict[str, str] = {}
+for _name, _code in STOCK_DICT.items():
+    if _code not in _CODE_TO_NAME:
+        _CODE_TO_NAME[_code] = _name
+
+
+def code_to_name(code: str) -> str:
+    """종목코드 → 종목명. 미등록 시 빈 문자열."""
+    return _CODE_TO_NAME.get(code, "")
+
 
 def map_stock_name(name: str) -> str | None:
     """종목명 → 종목코드 매핑. 미등록 시 None 반환."""
