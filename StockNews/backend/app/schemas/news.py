@@ -13,12 +13,14 @@ class NewsItem(BaseModel):
     stock_code: str
     stock_name: str | None = None
     sentiment: str
+    sentiment_score: float = 0.0
     news_score: float
     source: str
     source_url: str | None = None
     market: str
     theme: str | None = None
     content: str | None = None
+    summary: str | None = None
     published_at: datetime | None = None
 
     model_config = {"from_attributes": True}
@@ -35,6 +37,8 @@ class NewsScoreResponse(BaseModel):
     sentiment_score: float = 0.0
     disclosure: float = 0.0
     news_count: int = 0
+    top_themes: list[str] = []
+    updated_at: datetime | None = None
 
 
 class NewsListResponse(BaseModel):

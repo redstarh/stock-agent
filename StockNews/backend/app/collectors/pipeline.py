@@ -1,13 +1,12 @@
 """뉴스 수집 파이프라인 — 수집 → 전처리 → 분석 → 저장 → 발행."""
 
-import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.database import SessionLocal
 from app.models.news_event import NewsEvent
 from app.processing.article_scraper import ArticleScraper
 from app.processing.dedup import deduplicate
@@ -26,6 +25,9 @@ from app.scoring.engine import (
 
 logger = logging.getLogger(__name__)
 
+# LLM 병렬 호출 워커 수
+LLM_MAX_WORKERS = 10
+
 
 async def _scrape_articles(items: list[dict]) -> dict[str, str | None]:
     """기사 본문 스크래핑. URL → body 매핑 반환."""
@@ -36,7 +38,6 @@ async def _scrape_articles(items: list[dict]) -> dict[str, str | None]:
 
 def _map_stock_code(item: dict) -> str:
     """아이템에서 종목코드 추출/매핑."""
-    # 이미 stock_code가 있으면 그대로 사용
     if item.get("stock_code"):
         return item["stock_code"]
 
@@ -61,6 +62,37 @@ def _get_redis_client():
     except Exception as e:
         logger.warning("Redis unavailable, skipping pub/sub: %s", e)
         return None
+
+
+def _analyze_single(title: str, body: str | None) -> dict:
+    """단일 아이템의 LLM 분석 (감성 + 테마 + 요약). Thread-safe."""
+    # 감성 분석 (Sonnet 4 via mid model)
+    try:
+        sentiment_result = analyze_sentiment(title, body)
+    except Exception as e:
+        logger.warning("Sentiment failed: %s", e)
+        sentiment_result = {"sentiment": "neutral", "score": 0.0, "confidence": 0.0}
+
+    # 테마 분류 (로컬, LLM 미사용)
+    combined_text = title
+    if body:
+        combined_text += " " + body[:500]
+    themes = classify_theme(combined_text)
+
+    # 뉴스 요약 (Opus via default model)
+    summary = ""
+    if body:
+        try:
+            summary = summarize_news(title, body)
+        except Exception as e:
+            logger.warning("Summary failed: %s", e)
+
+    return {
+        "sentiment": sentiment_result["sentiment"],
+        "sentiment_score": sentiment_result["score"],
+        "themes": themes,
+        "summary": summary,
+    }
 
 
 async def process_collected_items(
@@ -92,87 +124,112 @@ async def process_collected_items(
     # 2. 기사 본문 스크래핑
     body_map = await _scrape_articles(unique_items)
 
-    # 3. Redis 클라이언트 (속보 발행용)
-    redis_client = _get_redis_client()
+    # 3. 전처리 (종목코드, 본문, 날짜 등)
+    prepared = []
+    for item in unique_items:
+        title = item.get("title", "")
+        source_url = item.get("source_url", "")
+        source = item.get("source", "unknown")
+        is_disclosure = item.get("is_disclosure", False)
+        published_at = item.get("published_at")
 
+        if isinstance(published_at, str):
+            try:
+                published_at = datetime.fromisoformat(published_at)
+            except (ValueError, TypeError):
+                published_at = None
+        if published_at is None:
+            published_at = datetime.now(timezone.utc)
+
+        stock_code = _map_stock_code(item)
+        stock_name = item.get("stock_name", "")
+        if not stock_name and stock_code:
+            market_val = item.get("market", market)
+            if market_val == "US":
+                from app.processing.us_stock_mapper import ticker_to_name
+                stock_name = ticker_to_name(stock_code) or ""
+            else:
+                stock_name = code_to_name(stock_code)
+
+        body = body_map.get(source_url)
+
+        prepared.append({
+            "title": title,
+            "source_url": source_url,
+            "source": source,
+            "is_disclosure": is_disclosure,
+            "published_at": published_at,
+            "stock_code": stock_code,
+            "stock_name": stock_name,
+            "body": body,
+        })
+
+    # 4. LLM 분석 (병렬)
+    logger.info("Starting parallel LLM analysis (%d workers)...", LLM_MAX_WORKERS)
+    analysis_results: list[dict | None] = [None] * len(prepared)
+
+    with ThreadPoolExecutor(max_workers=LLM_MAX_WORKERS) as executor:
+        future_to_idx = {}
+        for idx, p in enumerate(prepared):
+            future = executor.submit(_analyze_single, p["title"], p["body"])
+            future_to_idx[future] = idx
+
+        done_count = 0
+        for future in as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            try:
+                analysis_results[idx] = future.result()
+            except Exception as e:
+                logger.warning("LLM analysis failed for item %d: %s", idx, e)
+                analysis_results[idx] = {
+                    "sentiment": "neutral",
+                    "sentiment_score": 0.0,
+                    "themes": [],
+                    "summary": "",
+                }
+            done_count += 1
+            if done_count % 50 == 0:
+                logger.info("LLM progress: %d/%d", done_count, len(prepared))
+
+    logger.info("LLM analysis complete.")
+
+    # 5. DB 저장 + 속보 발행
+    redis_client = _get_redis_client()
     saved_count = 0
 
-    for item in unique_items:
+    for p, analysis in zip(prepared, analysis_results):
         try:
-            title = item.get("title", "")
-            source_url = item.get("source_url", "")
-            source = item.get("source", "unknown")
-            is_disclosure = item.get("is_disclosure", False)
-            published_at = item.get("published_at")
-
-            # published_at 파싱
-            if isinstance(published_at, str):
-                try:
-                    published_at = datetime.fromisoformat(published_at)
-                except (ValueError, TypeError):
-                    published_at = None
-            if published_at is None:
-                published_at = datetime.now(timezone.utc)
-
-            # 종목코드 매핑
-            stock_code = _map_stock_code(item)
-            stock_name = item.get("stock_name", "")
-            if not stock_name and stock_code:
-                market_val = item.get("market", market)
-                if market_val == "US":
-                    from app.processing.us_stock_mapper import ticker_to_name
-                    stock_name = ticker_to_name(stock_code) or ""
-                else:
-                    stock_name = code_to_name(stock_code)
-
-            # 기사 본문
-            body = body_map.get(source_url)
-
-            # 감성 분석 (Bedrock key 없으면 fallback)
-            sentiment_result = analyze_sentiment(title, body)
-            sentiment = sentiment_result["sentiment"]
-            sentiment_score = sentiment_result["score"]
-
-            # 테마 분류
-            combined_text = title
-            if body:
-                combined_text += " " + body[:500]
-            themes = classify_theme(combined_text)
+            sentiment = analysis["sentiment"]
+            sentiment_score = analysis["sentiment_score"]
+            themes = analysis["themes"]
             theme = ",".join(themes) if themes else None
+            summary = analysis["summary"]
 
-            # 뉴스 요약
-            summary = ""
-            if body:
-                summary = summarize_news(title, body)
-
-            # 스코어 계산
-            recency = calc_recency(published_at)
-            frequency = calc_frequency(1)  # 단건 처리이므로 1
+            recency = calc_recency(p["published_at"])
+            frequency = calc_frequency(1)
             sent_score = calc_sentiment_score(sentiment, sentiment_score)
-            disc_score = calc_disclosure(is_disclosure)
+            disc_score = calc_disclosure(p["is_disclosure"])
             news_score = calc_news_score(recency, frequency, sent_score, disc_score)
 
-            # DB 저장
             event = NewsEvent(
                 market=market,
-                stock_code=stock_code,
-                stock_name=stock_name,
-                title=title,
+                stock_code=p["stock_code"],
+                stock_name=p["stock_name"],
+                title=p["title"],
                 summary=summary or None,
-                content=body,
+                content=p["body"],
                 sentiment=sentiment,
                 sentiment_score=sentiment_score,
                 news_score=news_score,
-                source=source,
-                source_url=source_url or None,
+                source=p["source"],
+                source_url=p["source_url"] or None,
                 theme=theme,
-                is_disclosure=is_disclosure,
-                published_at=published_at,
+                is_disclosure=p["is_disclosure"],
+                published_at=p["published_at"],
             )
             db.add(event)
-            db.flush()  # ID 할당
+            db.flush()
 
-            # 속보 발행
             if redis_client:
                 from app.core.pubsub import publish_news_event as pub_event
                 pub_event(redis_client, event, news_score)
@@ -180,7 +237,7 @@ async def process_collected_items(
             saved_count += 1
 
         except Exception as e:
-            logger.warning("Pipeline item failed, skipping: %s — %s", item.get("title", "?")[:50], e)
+            logger.warning("Pipeline save failed: %s — %s", p["title"][:50], e)
             continue
 
     db.commit()

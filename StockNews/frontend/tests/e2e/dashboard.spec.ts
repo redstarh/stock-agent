@@ -9,7 +9,7 @@ test.describe('Dashboard Page', () => {
 
   test('displays dashboard header and market selector', async ({ page }) => {
     await expect(page.getByText('대시보드')).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'KR' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'KR' }).first()).toBeVisible();
   });
 
   test('shows top stock cards with scores', async ({ page }) => {

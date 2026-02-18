@@ -8,11 +8,13 @@ export interface NewsItem {
   stock_code: string;
   stock_name: string | null;
   sentiment: Sentiment;
+  sentiment_score?: number;
   news_score: number;
   source: string;
   source_url: string | null;
   market: string;
   theme: string | null;
+  summary?: string | null;
   published_at: string | null;
 }
 
@@ -26,6 +28,8 @@ export interface NewsScore {
   sentiment_score: number;
   disclosure: number;
   news_count: number;
+  top_themes?: string[];
+  updated_at?: string | null;
 }
 
 /** Top 종목 뉴스 요약 */

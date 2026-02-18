@@ -34,13 +34,13 @@ def mock_pipeline_deps(monkeypatch):
     # Mock sentiment analysis
     monkeypatch.setattr(
         "app.processing.sentiment.call_llm",
-        lambda sys, usr: '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}',
+        lambda sys, usr, **kw: '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}',
     )
 
     # Mock summary
     monkeypatch.setattr(
         "app.processing.summary.call_llm",
-        lambda sys, usr: '{"summary": "테스트 요약"}',
+        lambda sys, usr, **kw: '{"summary": "테스트 요약"}',
     )
 
     # Mock Redis (unavailable)
@@ -105,9 +105,10 @@ class TestProcessCollectedItems:
         assert count2 == 0
 
     @pytest.mark.asyncio
-    async def test_item_failure_skips_only_that_item(self, db_session, mock_pipeline_deps, monkeypatch):
-        """개별 아이템 실패 시 해당 건만 스킵."""
+    async def test_item_failure_falls_back_to_neutral(self, db_session, mock_pipeline_deps, monkeypatch):
+        """감성분석 실패 시 neutral fallback으로 저장."""
         from app.collectors.pipeline import process_collected_items
+        from app.models.news_event import NewsEvent
 
         items = [
             {
@@ -127,14 +128,13 @@ class TestProcessCollectedItems:
         ]
 
         call_count = 0
-        original_analyze = None
 
         def failing_sentiment(text, body=None):
             nonlocal call_count
             call_count += 1
             if call_count == 2:
                 raise RuntimeError("LLM error")
-            return {"sentiment": "neutral", "score": 0.0, "confidence": 0.5}
+            return {"sentiment": "positive", "score": 0.8, "confidence": 0.9}
 
         monkeypatch.setattr("app.collectors.pipeline.analyze_sentiment", failing_sentiment)
 
@@ -143,7 +143,10 @@ class TestProcessCollectedItems:
         monkeypatch.setattr("app.collectors.pipeline._scrape_articles", mock_scrape)
 
         count = await process_collected_items(db_session, items, market="KR")
-        assert count == 1  # Only first item saved
+        assert count == 2  # Both saved, failed one gets neutral fallback
+
+        failed_event = db_session.query(NewsEvent).filter_by(stock_code="000660").first()
+        assert failed_event.sentiment == "neutral"
 
     @pytest.mark.asyncio
     async def test_breaking_news_published(self, db_session, sample_items, monkeypatch):
@@ -157,11 +160,11 @@ class TestProcessCollectedItems:
         # Mock sentiment to return high score
         monkeypatch.setattr(
             "app.processing.sentiment.call_llm",
-            lambda sys, usr: '{"sentiment": "positive", "score": 0.95, "confidence": 0.99}',
+            lambda sys, usr, **kw: '{"sentiment": "positive", "score": 0.95, "confidence": 0.99}',
         )
         monkeypatch.setattr(
             "app.processing.summary.call_llm",
-            lambda sys, usr: '{"summary": "테스트"}',
+            lambda sys, usr, **kw: '{"summary": "테스트"}',
         )
 
         async def mock_scrape(items):

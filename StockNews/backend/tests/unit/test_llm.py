@@ -77,6 +77,33 @@ class TestCallLlm:
         call_kwargs = mock_client.converse.call_args[1]
         assert call_kwargs["modelId"] == "test-model-id"
 
+    def test_call_llm_custom_model_id(self, monkeypatch):
+        """model_id 파라미터로 모델 지정."""
+        mock_client = MagicMock()
+        mock_client.converse.return_value = {
+            "output": {"message": {"content": [{"text": "ok"}]}}
+        }
+        monkeypatch.setattr("app.core.llm.get_bedrock_client", lambda: mock_client)
+
+        from app.core.llm import call_llm
+        call_llm("sys", "usr", model_id="custom-model")
+
+        call_kwargs = mock_client.converse.call_args[1]
+        assert call_kwargs["modelId"] == "custom-model"
+
+    def test_call_llm_strips_code_fences(self, monkeypatch):
+        """마크다운 코드펜스를 제거."""
+        mock_client = MagicMock()
+        mock_client.converse.return_value = {
+            "output": {"message": {"content": [{"text": '```json\n{"sentiment": "positive"}\n```'}]}}
+        }
+        monkeypatch.setattr("app.core.llm.get_bedrock_client", lambda: mock_client)
+
+        from app.core.llm import call_llm
+        result = call_llm("sys", "usr")
+
+        assert result == '{"sentiment": "positive"}'
+
 
 class TestGetBedrockClient:
     """get_bedrock_client() 테스트."""

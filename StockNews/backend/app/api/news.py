@@ -37,6 +37,16 @@ async def get_news_score(
 
     stock_name = rows[0].stock_name if rows else None
 
+    # Top 3 themes
+    themes = [r.theme for r in rows if r.theme]
+    theme_counts = {}
+    for theme in themes:
+        theme_counts[theme] = theme_counts.get(theme, 0) + 1
+    top_themes = sorted(theme_counts.keys(), key=lambda t: theme_counts[t], reverse=True)[:3]
+
+    # Updated at: max published_at
+    updated_at = max((r.published_at for r in rows if r.published_at), default=None)
+
     return NewsScoreResponse(
         stock_code=stock,
         stock_name=stock_name,
@@ -46,6 +56,8 @@ async def get_news_score(
         sentiment_score=round(avg_sentiment, 2),
         disclosure=disclosure,
         news_count=len(rows),
+        top_themes=top_themes,
+        updated_at=updated_at,
     )
 
 
@@ -126,6 +138,7 @@ async def get_latest_news(
                 market=row.market,
                 theme=row.theme,
                 content=row.content,
+                summary=row.summary,
                 published_at=row.published_at,
             )
             for row in items

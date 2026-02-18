@@ -98,7 +98,7 @@ def fake_redis():
 @pytest.fixture
 def mock_openai(monkeypatch):
     """LLM call mock (감성 분석 응답)."""
-    def mock_call_llm(system_prompt: str, user_message: str) -> str:
+    def mock_call_llm(system_prompt: str, user_message: str, *, model_id: str = "") -> str:
         return '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}'
 
     monkeypatch.setattr("app.core.llm.call_llm", mock_call_llm)
@@ -108,7 +108,7 @@ def mock_openai(monkeypatch):
 @pytest.fixture
 def mock_openai_summary(monkeypatch):
     """LLM call mock (요약 응답)."""
-    def mock_call_llm(system_prompt: str, user_message: str) -> str:
+    def mock_call_llm(system_prompt: str, user_message: str, *, model_id: str = "") -> str:
         return '{"summary": "삼성전자가 4분기 사상 최대 실적을 기록했다."}'
 
     monkeypatch.setattr("app.core.llm.call_llm", mock_call_llm)

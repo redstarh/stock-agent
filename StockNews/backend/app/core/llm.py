@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from functools import lru_cache
 
 import boto3
@@ -26,12 +27,13 @@ def get_bedrock_client():
     return session.client("bedrock-runtime")
 
 
-def call_llm(system_prompt: str, user_message: str) -> str:
+def call_llm(system_prompt: str, user_message: str, *, model_id: str = "") -> str:
     """Bedrock Claude 호출.
 
     Args:
         system_prompt: 시스템 프롬프트
         user_message: 사용자 메시지
+        model_id: 사용할 모델 ID (빈 문자열이면 settings.bedrock_model_id 사용)
 
     Returns:
         LLM 응답 텍스트
@@ -40,10 +42,11 @@ def call_llm(system_prompt: str, user_message: str) -> str:
         RuntimeError: Bedrock 호출 실패 시
     """
     client = get_bedrock_client()
+    resolved_model = model_id or settings.bedrock_model_id
 
     try:
         response = client.converse(
-            modelId=settings.bedrock_model_id,
+            modelId=resolved_model,
             system=[{"text": system_prompt}],
             messages=[
                 {
@@ -58,7 +61,11 @@ def call_llm(system_prompt: str, user_message: str) -> str:
         )
 
         output_message = response["output"]["message"]
-        return output_message["content"][0]["text"]
+        text = output_message["content"][0]["text"]
+        # Strip markdown code fences (e.g. ```json ... ```)
+        stripped = re.sub(r'^```(?:\w+)?\s*\n?', '', text.strip())
+        stripped = re.sub(r'\n?```\s*$', '', stripped)
+        return stripped.strip()
 
     except Exception as e:
         logger.error("Bedrock LLM call failed: %s", e)

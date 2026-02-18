@@ -1,4 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
+import { vi } from 'vitest';
 import { useWebSocket } from '../../src/hooks/useWebSocket';
 
 // Mock WebSocket
@@ -58,7 +59,7 @@ describe('useWebSocket', () => {
     act(() => result.current.disconnect());
   });
 
-  it('receives breaking_news messages', async () => {
+  it('receives breaking_news messages and creates notifications', async () => {
     const { result } = renderHook(() => useWebSocket('ws://localhost:8000/ws/news'));
 
     await act(async () => {
@@ -71,18 +72,49 @@ describe('useWebSocket', () => {
       ws.onmessage?.({
         data: JSON.stringify({
           type: 'breaking_news',
-          data: { title: '속보: 삼성전자', stock_code: '005930' },
+          data: { title: '속보: 삼성전자', stock_code: '005930', news_score: 85 },
         }),
       });
     });
 
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].type).toBe('breaking_news');
+    expect(result.current.notifications).toHaveLength(1);
+    expect(result.current.unreadCount).toBe(1);
 
     act(() => result.current.disconnect());
   });
 
-  it('receives score_update messages', async () => {
+  it('calls onBreakingNews callback', async () => {
+    const onBreakingNews = vi.fn();
+    const { result } = renderHook(() =>
+      useWebSocket('ws://localhost:8000/ws/news', onBreakingNews)
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    act(() => {
+      const ws = MockWebSocket.instances[0];
+      ws.onmessage?.({
+        data: JSON.stringify({
+          type: 'breaking_news',
+          data: { title: '속보', stock_code: '005930', news_score: 90 },
+        }),
+      });
+    });
+
+    expect(onBreakingNews).toHaveBeenCalledWith({
+      title: '속보',
+      stock_code: '005930',
+      news_score: 90,
+    });
+
+    act(() => result.current.disconnect());
+  });
+
+  it('receives score_update messages without creating notifications', async () => {
     const { result } = renderHook(() => useWebSocket('ws://localhost:8000/ws/news'));
 
     await act(async () => {
@@ -101,6 +133,70 @@ describe('useWebSocket', () => {
 
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].type).toBe('score_update');
+    expect(result.current.notifications).toHaveLength(0);
+
+    act(() => result.current.disconnect());
+  });
+
+  it('marks notification as read', async () => {
+    const { result } = renderHook(() => useWebSocket('ws://localhost:8000/ws/news'));
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    act(() => {
+      const ws = MockWebSocket.instances[0];
+      ws.onmessage?.({
+        data: JSON.stringify({
+          type: 'breaking_news',
+          data: { title: 'Test', stock_code: '005930', news_score: 85 },
+        }),
+      });
+    });
+
+    const notificationId = result.current.notifications[0].id;
+
+    act(() => {
+      result.current.markAsRead(notificationId);
+    });
+
+    expect(result.current.notifications[0].read).toBe(true);
+    expect(result.current.unreadCount).toBe(0);
+
+    act(() => result.current.disconnect());
+  });
+
+  it('marks all notifications as read', async () => {
+    const { result } = renderHook(() => useWebSocket('ws://localhost:8000/ws/news'));
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    act(() => {
+      const ws = MockWebSocket.instances[0];
+      ws.onmessage?.({
+        data: JSON.stringify({
+          type: 'breaking_news',
+          data: { title: 'News 1', stock_code: '005930', news_score: 85 },
+        }),
+      });
+      ws.onmessage?.({
+        data: JSON.stringify({
+          type: 'breaking_news',
+          data: { title: 'News 2', stock_code: '000660', news_score: 90 },
+        }),
+      });
+    });
+
+    expect(result.current.unreadCount).toBe(2);
+
+    act(() => {
+      result.current.markAllAsRead();
+    });
+
+    expect(result.current.unreadCount).toBe(0);
 
     act(() => result.current.disconnect());
   });

@@ -1,7 +1,7 @@
 """종목 관련 REST 엔드포인트."""
 
 from fastapi import APIRouter, Depends, Query, Request, Response
-from sqlalchemy import cast, func, Date
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.limiter import limiter
 
@@ -22,15 +22,16 @@ async def get_stock_timeline(
     db: Session = Depends(get_db),
 ):
     """종목별 뉴스 스코어 타임라인."""
+    date_col = func.date(NewsEvent.published_at)
     results = (
         db.query(
-            cast(NewsEvent.published_at, Date).label("date"),
+            date_col.label("date"),
             func.avg(NewsEvent.news_score).label("score"),
         )
         .filter(NewsEvent.stock_code == stock_code)
         .filter(NewsEvent.published_at.isnot(None))
-        .group_by(cast(NewsEvent.published_at, Date))
-        .order_by(cast(NewsEvent.published_at, Date).desc())
+        .group_by(date_col)
+        .order_by(date_col.desc())
         .limit(days)
         .all()
     )

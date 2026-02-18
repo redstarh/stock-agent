@@ -1,7 +1,12 @@
 """Redis Pub/Sub 속보 발행/구독."""
 
+import asyncio
 import json
 import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.news_event import NewsEvent
 
 logger = logging.getLogger(__name__)
 
@@ -25,15 +30,38 @@ def publish_breaking_news(
     title: str,
     score: float,
     market: str,
+    stock_name: str | None = None,
+    theme: str | None = None,
+    sentiment: str | None = None,
+    published_at: str | None = None,
 ) -> bool:
-    """속보 이벤트를 Redis에 발행."""
+    """속보 이벤트를 Redis에 발행.
+
+    Args:
+        redis_client: Redis 클라이언트
+        stock_code: 종목 코드
+        title: 뉴스 제목
+        score: 뉴스 점수 (0-100)
+        market: 시장 (KR/US)
+        stock_name: 종목명 (optional)
+        theme: 테마 (optional)
+        sentiment: 감성 (optional)
+        published_at: 발행 시각 ISO format (optional)
+
+    Returns:
+        발행 성공 시 True
+    """
     channel = get_channel_name(market)
     payload = json.dumps({
         "type": "breaking_news",
         "stock_code": stock_code,
+        "stock_name": stock_name,
         "title": title,
-        "score": score,
+        "theme": theme,
+        "sentiment": sentiment,
+        "news_score": score,
         "market": market,
+        "published_at": published_at,
     }, ensure_ascii=False)
 
     try:
@@ -43,3 +71,64 @@ def publish_breaking_news(
     except Exception as e:
         logger.error("Failed to publish breaking news: %s", e)
         return False
+
+
+def publish_news_event(redis_client, news_event: "NewsEvent", score: float) -> bool:
+    """NewsEvent 객체로부터 속보 발행.
+
+    Args:
+        redis_client: Redis 클라이언트
+        news_event: NewsEvent 인스턴스
+        score: 계산된 뉴스 점수
+
+    Returns:
+        발행 성공 시 True
+    """
+    if not should_publish_breaking(score):
+        return False
+
+    return publish_breaking_news(
+        redis_client=redis_client,
+        stock_code=news_event.stock_code,
+        title=news_event.title,
+        score=score,
+        market=news_event.market,
+        stock_name=news_event.stock_name,
+        theme=news_event.theme,
+        sentiment=news_event.sentiment,
+        published_at=news_event.published_at.isoformat() if news_event.published_at else None,
+    )
+
+
+async def subscribe_and_broadcast(redis_client, broadcast_callback):
+    """Redis 채널 구독 후 WebSocket으로 브로드캐스트.
+
+    Args:
+        redis_client: Redis 클라이언트
+        broadcast_callback: 메시지를 받았을 때 호출할 async 함수
+    """
+    pubsub = redis_client.pubsub()
+    channels = [get_channel_name("KR"), get_channel_name("US")]
+
+    try:
+        pubsub.subscribe(*channels)
+        logger.info(f"Subscribed to Redis channels: {channels}")
+
+        # 비동기 폴링
+        while True:
+            message = pubsub.get_message()
+            if message and message["type"] == "message":
+                try:
+                    data = json.loads(message["data"])
+                    await broadcast_callback(data)
+                except json.JSONDecodeError:
+                    logger.warning(f"Invalid JSON from Redis: {message['data']}")
+                except Exception as e:
+                    logger.error(f"Broadcast callback error: {e}")
+
+            await asyncio.sleep(0.1)  # 100ms 폴링 간격
+
+    except Exception as e:
+        logger.error(f"Redis subscription error: {e}")
+    finally:
+        pubsub.close()

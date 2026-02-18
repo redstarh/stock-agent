@@ -7,6 +7,7 @@ AWS Bedrock Claude를 사용하여 뉴스의 감성(positive/neutral/negative)�
 import json
 import logging
 
+from app.core.config import settings
 from app.core.llm import call_llm
 
 logger = logging.getLogger(__name__)
@@ -61,7 +62,8 @@ def _call_llm(text: str) -> dict:
 JSON만 반환하세요. 설명 없이 다음 형식으로:
 {"sentiment": "positive"|"neutral"|"negative", "score": float, "confidence": float}"""
 
-    response_text = call_llm(system_prompt, text)
+    mid_model = settings.bedrock_model_id_mid or ""
+    response_text = call_llm(system_prompt, text, model_id=mid_model)
     return json.loads(response_text)
 
 

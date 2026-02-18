@@ -38,12 +38,12 @@ test.describe('App Navigation', () => {
   test('market selector switches between KR and US', async ({ page }) => {
     await page.goto('/');
 
-    // KR is default
-    const krButton = page.getByRole('tab', { name: 'KR' });
+    // KR is default — use first() to avoid strict mode error with multiple selectors
+    const krButton = page.getByRole('tab', { name: 'KR' }).first();
     await expect(krButton).toBeVisible();
 
     // Click US
-    const usButton = page.getByRole('tab', { name: 'US' });
+    const usButton = page.getByRole('tab', { name: 'US' }).first();
     await usButton.click();
   });
 });

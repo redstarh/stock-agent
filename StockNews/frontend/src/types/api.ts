@@ -18,6 +18,18 @@ export interface WebSocketMessage {
   message?: string;
 }
 
+/** 속보 데이터 */
+export interface BreakingNewsData {
+  stock_code: string;
+  stock_name: string | null;
+  title: string;
+  theme: string | null;
+  sentiment: string | null;
+  news_score: number;
+  market: string;
+  published_at: string | null;
+}
+
 /** Health 응답 */
 export interface HealthResponse {
   status: string;

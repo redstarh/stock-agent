@@ -7,7 +7,7 @@ class TestNewsSummary:
     def test_summary_returns_string(self, monkeypatch):
         """요약 결과가 문자열."""
         # Mock call_llm before importing
-        def mock_call_llm(system_prompt: str, user_message: str) -> str:
+        def mock_call_llm(system_prompt: str, user_message: str, **kw) -> str:
             return '{"summary": "삼성전자가 4분기 사상 최대 실적을 기록했다."}'
 
         monkeypatch.setattr("app.processing.summary.call_llm", mock_call_llm)
@@ -21,7 +21,7 @@ class TestNewsSummary:
     def test_summary_max_length(self, monkeypatch):
         """요약 200자 이하."""
         # Mock call_llm before importing
-        def mock_call_llm(system_prompt: str, user_message: str) -> str:
+        def mock_call_llm(system_prompt: str, user_message: str, **kw) -> str:
             return '{"summary": "삼성전자가 4분기 사상 최대 실적을 기록했다."}'
 
         monkeypatch.setattr("app.processing.summary.call_llm", mock_call_llm)
@@ -34,7 +34,7 @@ class TestNewsSummary:
     def test_summary_with_body(self, monkeypatch):
         """본문 포함 시에도 정상 동작."""
         # Mock call_llm before importing
-        def mock_call_llm(system_prompt: str, user_message: str) -> str:
+        def mock_call_llm(system_prompt: str, user_message: str, **kw) -> str:
             return '{"summary": "삼성전자가 4분기 사상 최대 실적을 기록했다."}'
 
         monkeypatch.setattr("app.processing.summary.call_llm", mock_call_llm)
@@ -61,7 +61,7 @@ class TestNewsSummary:
     def test_summary_title_only(self, monkeypatch):
         """제목만으로도 요약 가능."""
         # Mock call_llm before importing
-        def mock_call_llm(system_prompt: str, user_message: str) -> str:
+        def mock_call_llm(system_prompt: str, user_message: str, **kw) -> str:
             return '{"summary": "SK하이닉스가 HBM3E 양산을 개시했다."}'
 
         monkeypatch.setattr("app.processing.summary.call_llm", mock_call_llm)
