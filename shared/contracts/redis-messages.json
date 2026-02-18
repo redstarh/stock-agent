@@ -1,0 +1,60 @@
+{
+  "contract_version": "1.0",
+  "transport": "Redis Pub/Sub",
+  "publisher": "StockNews (app/core/pubsub.py)",
+  "subscriber": "StockAgent (backend/src/core/news_subscriber.py)",
+  "channels": {
+    "breaking_news": {
+      "description": "High-impact news events (score >= threshold)",
+      "trigger_threshold": 80.0,
+      "payload": {
+        "type": {
+          "type": "string",
+          "value": "breaking_news",
+          "required": true
+        },
+        "stock_code": {
+          "type": "string",
+          "required": true,
+          "description": "Stock code (e.g., 005930, AAPL)"
+        },
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "News headline"
+        },
+        "score": {
+          "type": "float",
+          "range": [0, 100],
+          "required": true,
+          "description": "News impact score"
+        },
+        "sentiment": {
+          "type": "float",
+          "range": [-1.0, 1.0],
+          "required": true,
+          "description": "Sentiment score"
+        },
+        "market": {
+          "type": "string",
+          "enum": ["KR", "US"],
+          "required": true
+        }
+      },
+      "example": {
+        "type": "breaking_news",
+        "stock_code": "005930",
+        "title": "삼성전자 4분기 어닝 서프라이즈",
+        "score": 85.5,
+        "sentiment": 0.8,
+        "market": "KR"
+      }
+    }
+  },
+  "compatibility_rules": [
+    "New fields MAY be added to payloads",
+    "Existing required fields MUST NOT be removed",
+    "Subscribers MUST handle unknown fields gracefully",
+    "Schema changes require version bump and coordinated release"
+  ]
+}

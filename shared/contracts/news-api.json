@@ -1,0 +1,67 @@
+{
+  "contract_version": "1.0",
+  "provider": "StockNews",
+  "consumer": "StockAgent",
+  "base_url": "http://localhost:8001/api/v1",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/news/score",
+      "params": {
+        "stock": { "type": "string", "required": true, "description": "Stock code (e.g., 005930, AAPL)" }
+      },
+      "response": {
+        "stock_code": "string",
+        "stock_name": "string | null",
+        "news_score": "float (0-100)",
+        "recency": "float (0-100)",
+        "frequency": "float (0-100)",
+        "sentiment_score": "float (-1.0 ~ 1.0)",
+        "disclosure": "float (0-100)",
+        "news_count": "int"
+      },
+      "sla": {
+        "max_latency_ms": 200,
+        "cache_ttl_s": 60
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/news/top",
+      "params": {
+        "market": { "type": "string", "enum": ["KR", "US"], "required": false, "default": "KR" },
+        "limit": { "type": "int", "required": false, "default": 10 }
+      },
+      "response": [
+        {
+          "stock_code": "string",
+          "stock_name": "string | null",
+          "news_score": "float",
+          "sentiment": "string (positive|neutral|negative)",
+          "news_count": "int",
+          "market": "string"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/stocks/{stock_code}/prediction",
+      "params": {
+        "stock_code": { "type": "string", "required": true, "in": "path" }
+      },
+      "response": {
+        "stock_code": "string",
+        "prediction_score": "float | null (0-100)",
+        "direction": "string | null (up|down|neutral)",
+        "confidence": "float | null (0.0-1.0)",
+        "based_on_days": "int"
+      }
+    }
+  ],
+  "compatibility_rules": [
+    "New fields MAY be added to responses",
+    "Existing fields MUST NOT be removed or renamed",
+    "Consumers MUST ignore unknown fields",
+    "Breaking changes require major version bump (v2)"
+  ]
+}

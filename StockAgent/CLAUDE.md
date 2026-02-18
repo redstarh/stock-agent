@@ -195,6 +195,23 @@ Backend: 145 tests passing (97.59% coverage) | Frontend: 64 tests passing, 14 su
 - lib/api.ts 96.42%, mocks 100%
 - app/* page stubs 제외 (라우터 진입점)
 
+## StockNews Integration
+
+This project consumes data from the **StockNews** news intelligence system (`~/AgentDev/StockNews`).
+
+**Integration points:**
+- **REST API** (`src/core/news_client.py`) — Calls `GET http://localhost:8001/api/v1/news/score?stock={code}` for strategy signals
+- **Redis Pub/Sub** (`src/core/news_subscriber.py`) — Subscribes to `breaking_news` channel for real-time high-impact events
+
+**Contracts:** See `~/AgentDev/shared/contracts/` for API and message schema definitions.
+
+**Rules:**
+- This project is the **consumer** — must handle unknown response fields gracefully
+- Never depend on StockNews internal implementation details
+- Redis subscriber must not crash on unexpected message formats
+
+**Platform manager:** See `~/AgentDev/CLAUDE.md` for cross-project orchestration guidelines.
+
 ## Key Design Decisions
 
 - **jest.config.ts**: `createJestConfig` result patched post-resolution for `transformIgnorePatterns` (MSW ESM compat)

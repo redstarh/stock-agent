@@ -90,10 +90,27 @@ StockNews/
 
 ## Development Status
 
-This project has a **completed v1.0 design specification** (`docs/StockNews-v1.0.md`) covering both Frontend and Backend. No application code has been written yet. Development follows a phased approach:
+All three phases are **complete and deployed**.
 
-- **Phase 1 (MVP):** Korean news collection (Naver + DART) → Scoring → REST API → React dashboard
-- **Phase 2:** US market expansion (Finnhub/NewsAPI), LLM accuracy improvements, real-time enhancements
-- **Phase 3:** AI-based news impact prediction model
+- **Phase 1 (MVP):** Korean news collection (Naver + DART) → Scoring → REST API → React dashboard ✅
+- **Phase 2:** US market (Finnhub/NewsAPI), LLM sentiment tuning, news summary, scheduler optimization ✅
+- **Phase 3:** AI prediction model (Random Forest), prediction API, prediction dashboard ✅
 
-See Section 9 of the v1.0 spec for the detailed task dependency graph.
+**Tests:** Backend 192 passed | Frontend 110 unit tests | E2E 18 tests | Build clean
+
+## StockAgent Integration
+
+This project provides data to the **StockAgent** automated trading system (`~/AgentDev/StockAgent`).
+
+**Integration points:**
+- **REST API** — StockAgent calls `GET /api/v1/news/score?stock={code}` for buy signal decisions
+- **Redis Pub/Sub** — Channel `breaking_news` sends high-impact events (score >= 80) to StockAgent
+
+**Contracts:** See `~/AgentDev/shared/contracts/` for API and message schema definitions.
+
+**Rules:**
+- This project is the **provider** — maintain backward compatibility on consumed endpoints
+- New response fields may be added; existing fields must not be removed or renamed
+- Redis message format changes require coordinated release with StockAgent
+
+**Platform manager:** See `~/AgentDev/CLAUDE.md` for cross-project orchestration guidelines.
