@@ -97,55 +97,40 @@ def fake_redis():
 
 @pytest.fixture
 def mock_openai(monkeypatch):
-    """OpenAI API mock (감성 분석 응답)."""
+    """LLM call mock (감성 분석 응답)."""
+    def mock_call_llm(system_prompt: str, user_message: str) -> str:
+        return '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}'
 
-    class MockCompletion:
-        class Choice:
-            class Message:
-                content = '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}'
-
-            message = Message()
-
-        choices = [Choice()]
-
-    class MockClient:
-        class Chat:
-            class Completions:
-                @staticmethod
-                def create(**kwargs):
-                    return MockCompletion()
-
-            completions = Completions()
-
-        chat = Chat()
-
-    monkeypatch.setattr("openai.OpenAI", lambda **kwargs: MockClient())
-    return MockClient()
+    monkeypatch.setattr("app.core.llm.call_llm", mock_call_llm)
+    return mock_call_llm
 
 
 @pytest.fixture
 def mock_openai_summary(monkeypatch):
-    """OpenAI API mock (요약 응답)."""
+    """LLM call mock (요약 응답)."""
+    def mock_call_llm(system_prompt: str, user_message: str) -> str:
+        return '{"summary": "삼성전자가 4분기 사상 최대 실적을 기록했다."}'
 
-    class MockCompletion:
-        class Choice:
-            class Message:
-                content = '{"summary": "삼성전자가 4분기 사상 최대 실적을 기록했다."}'
+    monkeypatch.setattr("app.core.llm.call_llm", mock_call_llm)
+    return mock_call_llm
 
-            message = Message()
 
-        choices = [Choice()]
+@pytest.fixture
+def mock_bedrock(monkeypatch):
+    """Bedrock client mock."""
+    class MockResponse:
+        def __init__(self, text):
+            self._text = text
 
-    class MockClient:
-        class Chat:
-            class Completions:
-                @staticmethod
-                def create(**kwargs):
-                    return MockCompletion()
+        def __getitem__(self, key):
+            if key == "output":
+                return {"message": {"content": [{"text": self._text}]}}
+            raise KeyError(key)
 
-            completions = Completions()
+    class MockBedrockClient:
+        def converse(self, **kwargs):
+            return MockResponse('{"sentiment": "neutral", "score": 0.0, "confidence": 0.5}')
 
-        chat = Chat()
-
-    monkeypatch.setattr("openai.OpenAI", lambda **kwargs: MockClient())
-    return MockClient()
+    mock_client = MockBedrockClient()
+    monkeypatch.setattr("app.core.llm.get_bedrock_client", lambda: mock_client)
+    return mock_client

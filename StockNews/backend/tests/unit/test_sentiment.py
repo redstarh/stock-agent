@@ -4,15 +4,27 @@ import pytest
 
 
 class TestSentimentAnalyzer:
-    def test_positive_sentiment(self, mock_openai):
+    def test_positive_sentiment(self, monkeypatch):
         """긍정 뉴스 → 'positive'."""
+        # Mock call_llm before importing
+        def mock_call_llm(system_prompt: str, user_message: str) -> str:
+            return '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}'
+
+        monkeypatch.setattr("app.processing.sentiment.call_llm", mock_call_llm)
+
         from app.processing.sentiment import analyze_sentiment
 
         result = analyze_sentiment("삼성전자 실적 사상 최대치 경신")
         assert result["sentiment"] == "positive"
 
-    def test_sentiment_score_range(self, mock_openai):
+    def test_sentiment_score_range(self, monkeypatch):
         """감성 점수가 -1.0 ~ 1.0 범위."""
+        # Mock call_llm before importing
+        def mock_call_llm(system_prompt: str, user_message: str) -> str:
+            return '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}'
+
+        monkeypatch.setattr("app.processing.sentiment.call_llm", mock_call_llm)
+
         from app.processing.sentiment import analyze_sentiment
 
         result = analyze_sentiment("삼성전자 실적 발표")
@@ -35,16 +47,28 @@ class TestSentimentAnalyzer:
         assert result["sentiment"] == "neutral"
         assert result["score"] == 0.0
 
-    def test_returns_dict_format(self, mock_openai):
+    def test_returns_dict_format(self, monkeypatch):
         """반환값에 sentiment, score 키 존재."""
+        # Mock call_llm before importing
+        def mock_call_llm(system_prompt: str, user_message: str) -> str:
+            return '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}'
+
+        monkeypatch.setattr("app.processing.sentiment.call_llm", mock_call_llm)
+
         from app.processing.sentiment import analyze_sentiment
 
         result = analyze_sentiment("테스트")
         assert "sentiment" in result
         assert "score" in result
 
-    def test_sentiment_with_body(self, mock_openai):
+    def test_sentiment_with_body(self, monkeypatch):
         """본문 포함 시 감성 분석 정상 동작."""
+        # Mock call_llm before importing
+        def mock_call_llm(system_prompt: str, user_message: str) -> str:
+            return '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}'
+
+        monkeypatch.setattr("app.processing.sentiment.call_llm", mock_call_llm)
+
         from app.processing.sentiment import analyze_sentiment
 
         result = analyze_sentiment(
@@ -55,8 +79,14 @@ class TestSentimentAnalyzer:
         assert -1.0 <= result["score"] <= 1.0
         assert "confidence" in result
 
-    def test_sentiment_body_none_backward_compatible(self, mock_openai):
+    def test_sentiment_body_none_backward_compatible(self, monkeypatch):
         """body=None 시 기존과 동일하게 동작 (하위 호환)."""
+        # Mock call_llm before importing
+        def mock_call_llm(system_prompt: str, user_message: str) -> str:
+            return '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}'
+
+        monkeypatch.setattr("app.processing.sentiment.call_llm", mock_call_llm)
+
         from app.processing.sentiment import analyze_sentiment
 
         result = analyze_sentiment("테스트 뉴스")

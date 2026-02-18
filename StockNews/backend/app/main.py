@@ -1,5 +1,6 @@
 """FastAPI 애플리케이션 엔트리포인트."""
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -19,13 +20,26 @@ from app.core.limiter import limiter
 from app.models.base import Base
 import app.models  # noqa: F401 — register all models with Base.metadata
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """애플리케이션 시작/종료 이벤트."""
     # Startup: 테이블 생성 (MVP — production에서는 Alembic 사용)
     Base.metadata.create_all(bind=engine)
+
+    # Startup: 수집 스케줄러 시작
+    from app.collectors.scheduler import create_scheduler
+    scheduler = create_scheduler()
+    scheduler.start()
+    logger.info("News collection scheduler started")
+
     yield
+
+    # Shutdown: 스케줄러 종료
+    scheduler.shutdown(wait=False)
+    logger.info("News collection scheduler stopped")
 
 
 app = FastAPI(

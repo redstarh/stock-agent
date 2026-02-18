@@ -1,27 +1,23 @@
 """LLM 기반 감성 분석.
 
-OpenAI API를 사용하여 뉴스의 감성(positive/neutral/negative)과
+AWS Bedrock Claude를 사용하여 뉴스의 감성(positive/neutral/negative)과
 감성 점수(-1.0 ~ 1.0)를 분석.
 """
 
 import json
 import logging
 
-from app.core.config import settings
+from app.core.llm import call_llm
 
 logger = logging.getLogger(__name__)
 
 
 def _call_llm(text: str) -> dict:
-    """OpenAI API 호출하여 감성 분석 결과 반환.
+    """Bedrock Claude 호출하여 감성 분석 결과 반환.
 
     Returns:
         {"sentiment": "positive"|"neutral"|"negative", "score": float, "confidence": float}
     """
-    import openai
-
-    client = openai.OpenAI(api_key=settings.openai_api_key)
-
     # 한국 금융 뉴스 특화 프롬프트 with few-shot examples
     system_prompt = """당신은 한국 금융 시장 전문 감성 분석가입니다.
 뉴스 제목이나 본문의 주가 영향도를 분석하여 sentiment, score, confidence를 JSON으로 반환하세요.
@@ -65,18 +61,8 @@ def _call_llm(text: str) -> dict:
 JSON만 반환하세요. 설명 없이 다음 형식으로:
 {"sentiment": "positive"|"neutral"|"negative", "score": float, "confidence": float}"""
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": text},
-        ],
-        temperature=0,
-        response_format={"type": "json_object"},
-    )
-
-    content = response.choices[0].message.content
-    return json.loads(content)
+    response_text = call_llm(system_prompt, text)
+    return json.loads(response_text)
 
 
 def analyze_sentiment(text: str, body: str | None = None) -> dict:

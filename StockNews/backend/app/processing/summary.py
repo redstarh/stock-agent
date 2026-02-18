@@ -6,7 +6,7 @@
 import json
 import logging
 
-from app.core.config import settings
+from app.core.llm import call_llm
 
 logger = logging.getLogger(__name__)
 
@@ -14,35 +14,21 @@ MAX_SUMMARY_LENGTH = 200  # 최대 요약 글자 수
 
 
 def _call_llm_summary(title: str, body: str | None = None) -> str:
-    """OpenAI API로 뉴스 요약 생성."""
-    import openai
-
-    client = openai.OpenAI(api_key=settings.openai_api_key)
-
+    """Bedrock Claude로 뉴스 요약 생성."""
     content = f"제목: {title}"
     if body:
         content += f"\n본문: {body[:1000]}"  # 본문 1000자 제한
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a Korean financial news summarizer. "
-                    "Summarize the given news into 1-2 sentences in Korean. "
-                    "Focus on: what happened, which company/stock, and potential market impact. "
-                    f"Keep under {MAX_SUMMARY_LENGTH} characters. "
-                    'Return JSON: {"summary": "요약 텍스트"}'
-                ),
-            },
-            {"role": "user", "content": content},
-        ],
-        temperature=0,
-        response_format={"type": "json_object"},
+    system_prompt = (
+        "You are a Korean financial news summarizer. "
+        "Summarize the given news into 1-2 sentences in Korean. "
+        "Focus on: what happened, which company/stock, and potential market impact. "
+        f"Keep under {MAX_SUMMARY_LENGTH} characters. "
+        'Return JSON: {"summary": "요약 텍스트"}'
     )
 
-    result = json.loads(response.choices[0].message.content)
+    response_text = call_llm(system_prompt, content)
+    result = json.loads(response_text)
     summary = result.get("summary", "")
     return summary[:MAX_SUMMARY_LENGTH]
 
@@ -61,4 +47,26 @@ def summarize_news(title: str, body: str | None = None) -> str:
         return _call_llm_summary(title, body)
     except Exception as e:
         logger.warning("Summary generation failed, returning empty: %s", e)
+        return ""
+
+
+def auto_summarize_event(event) -> str | None:
+    """NewsEvent에 대해 자동 요약 생성 및 저장.
+
+    Args:
+        event: NewsEvent 인스턴스
+
+    Returns:
+        생성된 요약 문자열. 콘텐츠가 없으면 None. 실패 시 빈 문자열.
+    """
+    if not event.content or not event.content.strip():
+        return None
+
+    try:
+        summary = summarize_news(event.title, event.content)
+        event.summary = summary
+        return summary
+    except Exception as e:
+        logger.warning("Auto-summarize failed for event %s: %s", event.id, e)
+        event.summary = ""
         return ""
