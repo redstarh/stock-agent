@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.health import router as health_router
+from app.api.prediction import router as prediction_router
 from app.api.router import api_v1_router
 from app.api.summary import router as summary_router
 from app.api.websocket import router as ws_router
@@ -43,6 +44,7 @@ app.add_middleware(
 # Routers
 app.include_router(health_router)
 app.include_router(api_v1_router)
+app.include_router(prediction_router)
 app.include_router(summary_router)
 app.include_router(ws_router)
 

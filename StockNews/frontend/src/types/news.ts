@@ -43,3 +43,12 @@ export interface TimelinePoint {
   date: string;
   score: number;
 }
+
+/** 예측 데이터 */
+export interface PredictionData {
+  stock_code: string;
+  prediction_score: number | null;
+  direction: 'up' | 'down' | 'neutral' | null;
+  confidence: number | null;
+  based_on_days: number;
+}

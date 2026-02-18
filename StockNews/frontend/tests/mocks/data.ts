@@ -79,3 +79,16 @@ export const mockThemeStrength = () => [
   { theme: '반도체', strength_score: 88.3, news_count: 38, sentiment_avg: 0.6, date: '2024-01-15', market: 'KR' },
   { theme: '2차전지', strength_score: 65.1, news_count: 22, sentiment_avg: -0.2, date: '2024-01-15', market: 'KR' },
 ];
+
+export const mockPrediction = (code: string) => {
+  if (code === 'INVALID') {
+    return null; // Will trigger error in handler
+  }
+  return {
+    stock_code: code,
+    prediction_score: 72.5,
+    direction: 'up' as const,
+    confidence: 0.85,
+    based_on_days: 7,
+  };
+};

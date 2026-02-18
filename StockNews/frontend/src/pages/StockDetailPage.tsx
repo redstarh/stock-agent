@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useNewsScore } from '../hooks/useNewsScore';
+import { usePrediction } from '../hooks/usePrediction';
 import { fetchNewsByDate } from '../api/news';
 import Loading from '../components/common/Loading';
 import ScoreTimeline from '../components/charts/ScoreTimeline';
 import SentimentPie from '../components/charts/SentimentPie';
+import PredictionChart from '../components/charts/PredictionChart';
+import PredictionSignal from '../components/common/PredictionSignal';
 import ChartDrilldown from '../components/charts/ChartDrilldown';
 import FilterPanel, { DEFAULT_FILTERS, type NewsFilters } from '../components/common/FilterPanel';
 import { formatScore } from '../utils/format';
@@ -15,6 +18,7 @@ export default function StockDetailPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { score, timeline } = useNewsScore(code ?? '');
+  const prediction = usePrediction(code ?? '');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [filters, setFilters] = useState<NewsFilters>(DEFAULT_FILTERS);
 
@@ -106,6 +110,28 @@ export default function StockDetailPage() {
             )}
           </section>
         </div>
+
+        {/* Prediction Section */}
+        <section className="mt-6">
+          <h3 className="mb-3 font-semibold text-gray-700">예측</h3>
+          {prediction.isLoading ? (
+            <Loading message="예측 데이터 로딩 중..." />
+          ) : prediction.isError ? (
+            <p className="text-red-500">예측 데이터를 불러올 수 없습니다</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <PredictionChart
+                score={prediction.data?.prediction_score ?? null}
+                direction={prediction.data?.direction ?? null}
+                confidence={prediction.data?.confidence ?? null}
+              />
+              <PredictionSignal
+                direction={prediction.data?.direction ?? null}
+                confidence={prediction.data?.confidence ?? null}
+              />
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
