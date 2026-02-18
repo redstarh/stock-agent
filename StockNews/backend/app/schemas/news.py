@@ -18,6 +18,7 @@ class NewsItem(BaseModel):
     source_url: str | None = None
     market: str
     theme: str | None = None
+    content: str | None = None
     published_at: datetime | None = None
 
     model_config = {"from_attributes": True}

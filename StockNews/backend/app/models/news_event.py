@@ -28,6 +28,7 @@ class NewsEvent(Base):
     stock_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     summary: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    content: Mapped[str | None] = mapped_column(String(5000), nullable=True)
     sentiment: Mapped[str] = mapped_column(
         String(10), nullable=False, default=SentimentEnum.neutral.value
     )

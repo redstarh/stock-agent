@@ -79,14 +79,22 @@ JSON만 반환하세요. 설명 없이 다음 형식으로:
     return json.loads(content)
 
 
-def analyze_sentiment(text: str) -> dict:
+def analyze_sentiment(text: str, body: str | None = None) -> dict:
     """뉴스 텍스트 감성 분석.
+
+    Args:
+        text: 뉴스 제목
+        body: 뉴스 본문 (optional, 분석 정확도 향상)
 
     Returns:
         {"sentiment": str, "score": float, "confidence": float}
     """
+    combined = text
+    if body:
+        combined = f"제목: {text}\n본문: {body[:2000]}"
+
     try:
-        result = _call_llm(text)
+        result = _call_llm(combined)
 
         # 결과 검증
         sentiment = result.get("sentiment", "neutral")

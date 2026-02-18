@@ -42,3 +42,23 @@ class TestSentimentAnalyzer:
         result = analyze_sentiment("테스트")
         assert "sentiment" in result
         assert "score" in result
+
+    def test_sentiment_with_body(self, mock_openai):
+        """본문 포함 시 감성 분석 정상 동작."""
+        from app.processing.sentiment import analyze_sentiment
+
+        result = analyze_sentiment(
+            "삼성전자 실적 발표",
+            body="삼성전자가 4분기 매출 80조원을 기록하며 사상 최대 실적을 달성했다."
+        )
+        assert result["sentiment"] in ("positive", "neutral", "negative")
+        assert -1.0 <= result["score"] <= 1.0
+        assert "confidence" in result
+
+    def test_sentiment_body_none_backward_compatible(self, mock_openai):
+        """body=None 시 기존과 동일하게 동작 (하위 호환)."""
+        from app.processing.sentiment import analyze_sentiment
+
+        result = analyze_sentiment("테스트 뉴스")
+        assert "sentiment" in result
+        assert "score" in result

@@ -115,6 +115,7 @@ def get_latest_news(
                 source_url=row.source_url,
                 market=row.market,
                 theme=row.theme,
+                content=row.content,
                 published_at=row.published_at,
             )
             for row in items

@@ -103,6 +103,31 @@ class TestNewsEventModel:
         db_session.commit()
         assert event.market == "US"
 
+    def test_news_event_content_field(self, db_session):
+        """content 필드 저장 및 조회."""
+        from app.models.news_event import NewsEvent
+
+        event = NewsEvent(
+            market="KR", stock_code="005930", title="본문 테스트",
+            sentiment="neutral", source="naver",
+            content="삼성전자가 4분기 매출 80조원을 기록했다.",
+        )
+        db_session.add(event)
+        db_session.commit()
+        assert event.content == "삼성전자가 4분기 매출 80조원을 기록했다."
+
+    def test_news_event_content_nullable(self, db_session):
+        """content 필드는 nullable."""
+        from app.models.news_event import NewsEvent
+
+        event = NewsEvent(
+            market="KR", stock_code="005930", title="본문 없는 뉴스",
+            sentiment="neutral", source="dart",
+        )
+        db_session.add(event)
+        db_session.commit()
+        assert event.content is None
+
 
 class TestThemeStrengthModel:
     def test_create_theme_strength(self, db_session):
