@@ -1,0 +1,35 @@
+# Environment
+.env
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Logs
+logs/
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Docker volumes
+pgdata/
+redisdata/
+
+# Node
+node_modules/
+.next/
+
+# OS
+.DS_Store
