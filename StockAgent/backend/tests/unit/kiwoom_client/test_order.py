@@ -93,3 +93,39 @@ async def test_order_zero_quantity_rejected(mock_auth):
     order = KiwoomOrder(auth=mock_auth, base_url="https://openapi.koreainvestment.com:9443")
     with pytest.raises(ValueError):
         await order.buy("005930", qty=0, price=70000)
+
+
+@pytest.mark.asyncio
+async def test_sell_zero_quantity_rejected(mock_auth):
+    """매도 수량 0 거부 (line 43 coverage)"""
+    order = KiwoomOrder(auth=mock_auth, base_url="https://openapi.koreainvestment.com:9443")
+    with pytest.raises(ValueError):
+        await order.sell("005930", qty=0, price=70000)
+
+
+@pytest.mark.asyncio
+async def test_cancel_order_failure(mock_auth):
+    """주문 취소 실패 응답 처리 (lines 77-78 coverage)"""
+    with respx.mock(base_url="https://openapi.koreainvestment.com:9443") as mock:
+        mock.post("/uapi/domestic-stock/v1/trading/order-cash").respond(json={
+            "rt_cd": "1",
+            "msg1": "취소 실패",
+        })
+        order = KiwoomOrder(auth=mock_auth, base_url="https://openapi.koreainvestment.com:9443")
+        result = await order.cancel(order_id="ORD001", stock_code="005930", qty=10)
+        assert result["status"] == "failed"
+        assert result["message"] == "취소 실패"
+
+
+@pytest.mark.asyncio
+async def test_buy_order_failure(mock_auth):
+    """매수 주문 실패 응답 처리 (lines 151-152 coverage)"""
+    with respx.mock(base_url="https://openapi.koreainvestment.com:9443") as mock:
+        mock.post("/uapi/domestic-stock/v1/trading/order-cash").respond(json={
+            "rt_cd": "1",
+            "msg1": "주문 실패",
+        })
+        order = KiwoomOrder(auth=mock_auth, base_url="https://openapi.koreainvestment.com:9443")
+        result = await order.buy("005930", qty=10, price=70000)
+        assert result["status"] == "failed"
+        assert result["message"] == "주문 실패"

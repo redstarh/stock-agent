@@ -3,6 +3,7 @@
  */
 import { render, screen, waitFor, act } from "@testing-library/react";
 import { server } from "@/mocks/server";
+import { http, HttpResponse } from "msw";
 import OrderMonitor from "@/components/OrderMonitor";
 
 // MSW 서버 라이프사이클
@@ -144,6 +145,61 @@ describe("OrderMonitor", () => {
       expect(screen.getByText("취소")).toBeInTheDocument();
       expect(screen.getByText("035720")).toBeInTheDocument();
       expect(screen.getByText("매도")).toBeInTheDocument();
+    });
+  });
+
+  test("displays error when API fetch fails", async () => {
+    server.use(
+      http.get("http://localhost:8000/api/v1/orders", () => {
+        return HttpResponse.json(
+          { detail: "Internal server error" },
+          { status: 500 }
+        );
+      })
+    );
+
+    render(<OrderMonitor />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/오류:/)).toBeInTheDocument();
+    });
+  });
+
+  test("handles invalid WebSocket message gracefully", async () => {
+    render(<OrderMonitor />);
+
+    // Wait for WebSocket connection
+    await waitFor(() => {
+      expect(MockWebSocket.instances.length).toBe(1);
+    });
+
+    // Send invalid JSON message
+    act(() => {
+      MockWebSocket.instances[0].onmessage?.({ data: "invalid json" });
+    });
+
+    // Component should not crash - orders from initial API call still visible
+    await waitFor(() => {
+      expect(screen.getByText("ORD001")).toBeInTheDocument();
+    });
+  });
+
+  test("handles WebSocket error event", async () => {
+    render(<OrderMonitor />);
+
+    // Wait for WebSocket connection
+    await waitFor(() => {
+      expect(MockWebSocket.instances.length).toBe(1);
+    });
+
+    // Trigger error event
+    act(() => {
+      MockWebSocket.instances[0].onerror?.(new Event("error"));
+    });
+
+    // Component should not crash - orders still visible
+    await waitFor(() => {
+      expect(screen.getByText("ORD001")).toBeInTheDocument();
     });
   });
 });

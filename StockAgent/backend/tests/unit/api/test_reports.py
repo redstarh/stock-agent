@@ -4,11 +4,22 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from src.main import app
+from src.api import reports
 
 
 @pytest.fixture
 def client():
     return TestClient(app)
+
+
+@pytest.fixture
+def clear_stores():
+    """Clear in-memory stores before and after each test"""
+    reports._trade_store.clear()
+    reports._metrics_store.clear()
+    yield
+    reports._trade_store.clear()
+    reports._metrics_store.clear()
 
 
 @pytest.fixture
@@ -112,3 +123,73 @@ def test_get_metrics_empty(client):
         data = resp.json()
         assert isinstance(data, list)
         assert len(data) == 0
+
+
+def test_get_trades_by_date_uses_store(client, clear_stores):
+    """get_trades_by_date가 실제로 _trade_store를 필터링하는지 검증 (line 19)"""
+    # Populate store with trades on different dates
+    reports._trade_store.extend([
+        {
+            "trade_id": "t1",
+            "date": "2026-01-15",
+            "stock_code": "005930",
+            "pnl": 10000,
+            "strategy_tag": "volume_leader",
+        },
+        {
+            "trade_id": "t2",
+            "date": "2026-01-15",
+            "stock_code": "000660",
+            "pnl": -5000,
+            "strategy_tag": "news_spike",
+        },
+        {
+            "trade_id": "t3",
+            "date": "2026-01-16",
+            "stock_code": "005930",
+            "pnl": 20000,
+            "strategy_tag": "volume_leader",
+        },
+    ])
+
+    # Call endpoint without mocking get_trades_by_date
+    resp = client.get("/api/v1/reports/daily?date=2026-01-15")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    # Verify it only returns trades from 2026-01-15
+    assert data["date"] == "2026-01-15"
+    assert data["total_trades"] == 2  # Only t1 and t2
+
+
+def test_get_all_metrics_uses_store(client, clear_stores):
+    """get_all_metrics가 실제로 _metrics_store를 반환하는지 검증 (line 24)"""
+    # Populate metrics store
+    reports._metrics_store.extend([
+        {
+            "id": 1,
+            "date": "2026-01-15",
+            "metric_type": "win_rate",
+            "value": 60.0,
+            "strategy_tag": "volume_leader",
+        },
+        {
+            "id": 2,
+            "date": "2026-01-15",
+            "metric_type": "total_pnl",
+            "value": 50000.0,
+            "strategy_tag": "all",
+        },
+    ])
+
+    # Call endpoint without mocking get_all_metrics
+    resp = client.get("/api/v1/reports/metrics")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    # Verify it returns all metrics from store
+    assert len(data) == 2
+    assert data[0]["metric_type"] == "win_rate"
+    assert data[0]["value"] == 60.0
+    assert data[1]["metric_type"] == "total_pnl"
+    assert data[1]["value"] == 50000.0

@@ -63,4 +63,51 @@ describe("StrategyPage", () => {
       expect(screen.getByLabelText(/VWAP 조건/)).toBeInTheDocument();
     });
   });
+
+  test("handles fetch config error gracefully", async () => {
+    server.use(
+      http.get("http://localhost:8000/api/v1/strategy/config", () => {
+        return HttpResponse.json(
+          { detail: "Internal server error" },
+          { status: 500 }
+        );
+      })
+    );
+
+    render(<StrategyPage />);
+
+    // Component should still render with default values despite error
+    await waitFor(() => {
+      expect(screen.getByLabelText(/TOP N/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/뉴스 임계값/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/VWAP 조건/)).toBeInTheDocument();
+    });
+
+    // Should show default values (no crash)
+    expect(screen.getByLabelText(/TOP N/)).toHaveValue(5);
+    expect(screen.getByLabelText(/뉴스 임계값/)).toHaveValue(0.7);
+    expect(screen.getByLabelText(/VWAP 조건/)).toBeChecked();
+  });
+
+  test("toggles vwap condition checkbox", async () => {
+    render(<StrategyPage />);
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/VWAP 조건/)).toBeInTheDocument();
+    });
+
+    const checkbox = screen.getByLabelText(/VWAP 조건/) as HTMLInputElement;
+
+    // Initial state should be checked (from mock data)
+    expect(checkbox).toBeChecked();
+
+    // Toggle off
+    await userEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+
+    // Toggle on
+    await userEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+  });
 });

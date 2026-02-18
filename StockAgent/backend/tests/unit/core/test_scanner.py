@@ -39,3 +39,22 @@ def test_calculate_opening_range():
     range_ = Scanner.calc_opening_range(candles)
     assert range_["high"] == 72000
     assert range_["low"] == 69500
+
+
+def test_detect_volume_surge_zero_prev_volume():
+    """전일 거래량 0일 때 False 반환 (line 39 coverage)"""
+    from src.core.scanner import Scanner
+
+    result = Scanner.detect_volume_surge(
+        today_volume=1000, prev_volume=0, threshold=3.0
+    )
+    assert result is False
+
+
+def test_calc_opening_range_empty():
+    """빈 캔들 리스트 입력 시 zeros 반환 (line 54 coverage)"""
+    from src.core.scanner import Scanner
+
+    range_ = Scanner.calc_opening_range([])
+    assert range_["high"] == 0
+    assert range_["low"] == 0
