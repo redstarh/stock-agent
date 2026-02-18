@@ -24,7 +24,8 @@ class HealthResponse(BaseModel):
     """서버 상태 응답."""
 
     status: str
-    version: str
+    version: str | None = None
+    services: dict[str, str] | None = None
 
 
 class ErrorResponse(BaseModel):

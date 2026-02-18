@@ -1,8 +1,9 @@
 """Prediction API endpoints."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from app.core.limiter import limiter
 
 from app.core.database import get_db
 from app.models.news_event import NewsEvent
@@ -12,7 +13,8 @@ router = APIRouter(prefix="/api/v1", tags=["prediction"])
 
 
 @router.get("/stocks/{code}/prediction", response_model=PredictionResponse)
-def get_prediction(code: str, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_prediction(request: Request, response: Response, code: str, db: Session = Depends(get_db)):
     """종목별 예측 점수 반환.
 
     실제 구현에서는 DB에서 최근 뉴스를 조회하여 피처를 추출하고

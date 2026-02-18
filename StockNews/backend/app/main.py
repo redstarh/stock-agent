@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.api.health import router as health_router
 from app.api.prediction import router as prediction_router
@@ -13,6 +15,7 @@ from app.api.summary import router as summary_router
 from app.api.websocket import router as ws_router
 from app.core.config import settings
 from app.core.database import engine
+from app.core.limiter import limiter
 from app.models.base import Base
 import app.models  # noqa: F401 — register all models with Base.metadata
 
@@ -31,6 +34,10 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Rate limiter setup
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS
 app.add_middleware(

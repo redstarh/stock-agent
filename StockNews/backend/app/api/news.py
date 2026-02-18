@@ -1,8 +1,9 @@
 """뉴스 관련 REST 엔드포인트."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from app.core.limiter import limiter
 
 from app.core.database import get_db
 from app.models.news_event import NewsEvent
@@ -12,7 +13,10 @@ router = APIRouter(prefix="/news", tags=["news"])
 
 
 @router.get("/score", response_model=NewsScoreResponse)
-def get_news_score(
+@limiter.limit("60/minute")
+async def get_news_score(
+    request: Request,
+    response: Response,
     stock: str = Query(..., description="종목 코드"),
     db: Session = Depends(get_db),
 ):
@@ -46,7 +50,10 @@ def get_news_score(
 
 
 @router.get("/top", response_model=list[NewsTopItem])
-def get_top_news(
+@limiter.limit("60/minute")
+async def get_top_news(
+    request: Request,
+    response: Response,
     market: str = Query(..., description="마켓 (KR/US)"),
     limit: int = Query(10, ge=1, le=50, description="최대 건수"),
     db: Session = Depends(get_db),
@@ -82,7 +89,10 @@ def get_top_news(
 
 
 @router.get("/latest", response_model=NewsListResponse)
-def get_latest_news(
+@limiter.limit("60/minute")
+async def get_latest_news(
+    request: Request,
+    response: Response,
     market: str | None = Query(None, description="마켓 필터 (KR/US)"),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),

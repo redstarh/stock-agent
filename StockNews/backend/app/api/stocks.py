@@ -1,8 +1,9 @@
 """종목 관련 REST 엔드포인트."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy import cast, func, Date
 from sqlalchemy.orm import Session
+from app.core.limiter import limiter
 
 from app.core.database import get_db
 from app.models.news_event import NewsEvent
@@ -12,7 +13,10 @@ router = APIRouter(prefix="/stocks", tags=["stocks"])
 
 
 @router.get("/{stock_code}/timeline", response_model=list[TimelinePoint])
-def get_stock_timeline(
+@limiter.limit("60/minute")
+async def get_stock_timeline(
+    request: Request,
+    response: Response,
     stock_code: str,
     days: int = Query(7, ge=1, le=90, description="조회 일수"),
     db: Session = Depends(get_db),
