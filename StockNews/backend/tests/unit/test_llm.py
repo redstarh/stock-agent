@@ -83,44 +83,69 @@ class TestGetBedrockClient:
 
     def test_creates_client_with_credentials(self, monkeypatch):
         """AWS credentials가 있으면 전달."""
+        monkeypatch.setattr("app.core.llm.settings.aws_profile", "")
         monkeypatch.setattr("app.core.llm.settings.aws_access_key_id", "test-key")
         monkeypatch.setattr("app.core.llm.settings.aws_secret_access_key", "test-secret")
         monkeypatch.setattr("app.core.llm.settings.aws_region", "ap-northeast-2")
 
-        mock_boto3 = MagicMock()
-        monkeypatch.setattr("app.core.llm.boto3.client", mock_boto3)
+        mock_session = MagicMock()
+        mock_session_cls = MagicMock(return_value=mock_session)
+        monkeypatch.setattr("app.core.llm.boto3.Session", mock_session_cls)
 
-        # Clear lru_cache
         from app.core.llm import get_bedrock_client
         get_bedrock_client.cache_clear()
 
         get_bedrock_client()
 
-        mock_boto3.assert_called_once_with(
-            service_name="bedrock-runtime",
-            region_name="ap-northeast-2",
+        mock_session_cls.assert_called_once_with(
             aws_access_key_id="test-key",
             aws_secret_access_key="test-secret",
+            region_name="ap-northeast-2",
         )
-        # Clear cache for other tests
+        mock_session.client.assert_called_once_with("bedrock-runtime")
         get_bedrock_client.cache_clear()
 
-    def test_creates_client_without_credentials(self, monkeypatch):
-        """AWS credentials가 없으면 기본 credential chain 사용."""
+    def test_creates_client_with_profile(self, monkeypatch):
+        """AWS profile이 있으면 profile_name 사용."""
+        monkeypatch.setattr("app.core.llm.settings.aws_profile", "my-profile")
         monkeypatch.setattr("app.core.llm.settings.aws_access_key_id", "")
         monkeypatch.setattr("app.core.llm.settings.aws_secret_access_key", "")
         monkeypatch.setattr("app.core.llm.settings.aws_region", "us-east-1")
 
-        mock_boto3 = MagicMock()
-        monkeypatch.setattr("app.core.llm.boto3.client", mock_boto3)
+        mock_session = MagicMock()
+        mock_session_cls = MagicMock(return_value=mock_session)
+        monkeypatch.setattr("app.core.llm.boto3.Session", mock_session_cls)
 
         from app.core.llm import get_bedrock_client
         get_bedrock_client.cache_clear()
 
         get_bedrock_client()
 
-        mock_boto3.assert_called_once_with(
-            service_name="bedrock-runtime",
+        mock_session_cls.assert_called_once_with(
+            profile_name="my-profile",
             region_name="us-east-1",
         )
+        mock_session.client.assert_called_once_with("bedrock-runtime")
+        get_bedrock_client.cache_clear()
+
+    def test_creates_client_without_credentials(self, monkeypatch):
+        """AWS credentials가 없으면 기본 credential chain 사용."""
+        monkeypatch.setattr("app.core.llm.settings.aws_profile", "")
+        monkeypatch.setattr("app.core.llm.settings.aws_access_key_id", "")
+        monkeypatch.setattr("app.core.llm.settings.aws_secret_access_key", "")
+        monkeypatch.setattr("app.core.llm.settings.aws_region", "us-east-1")
+
+        mock_session = MagicMock()
+        mock_session_cls = MagicMock(return_value=mock_session)
+        monkeypatch.setattr("app.core.llm.boto3.Session", mock_session_cls)
+
+        from app.core.llm import get_bedrock_client
+        get_bedrock_client.cache_clear()
+
+        get_bedrock_client()
+
+        mock_session_cls.assert_called_once_with(
+            region_name="us-east-1",
+        )
+        mock_session.client.assert_called_once_with("bedrock-runtime")
         get_bedrock_client.cache_clear()

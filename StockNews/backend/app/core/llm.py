@@ -14,15 +14,16 @@ logger = logging.getLogger(__name__)
 @lru_cache(maxsize=1)
 def get_bedrock_client():
     """Bedrock Runtime 클라이언트 (싱글턴)."""
-    kwargs = {
-        "service_name": "bedrock-runtime",
-        "region_name": settings.aws_region,
-    }
-    if settings.aws_access_key_id and settings.aws_secret_access_key:
-        kwargs["aws_access_key_id"] = settings.aws_access_key_id
-        kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
+    session_kwargs = {}
+    if settings.aws_profile:
+        session_kwargs["profile_name"] = settings.aws_profile
+    elif settings.aws_access_key_id and settings.aws_secret_access_key:
+        session_kwargs["aws_access_key_id"] = settings.aws_access_key_id
+        session_kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
 
-    return boto3.client(**kwargs)
+    session_kwargs["region_name"] = settings.aws_region
+    session = boto3.Session(**session_kwargs)
+    return session.client("bedrock-runtime")
 
 
 def call_llm(system_prompt: str, user_message: str) -> str:
