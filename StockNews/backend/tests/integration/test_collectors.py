@@ -13,15 +13,15 @@ class TestNaverCollector:
         <html><body>
         <ul class="list_news">
             <li class="bx">
-                <a class="news_tit" href="https://news.naver.com/article/1" title="삼성전자 4분기 실적 발표">삼성전자 4분기 실적 발표</a>
+                <a data-heatmap-target=".tit" href="https://news.naver.com/article/1">삼성전자 4분기 실적 발표</a>
                 <span class="info_group"><a class="info press">한국경제</a></span>
             </li>
             <li class="bx">
-                <a class="news_tit" href="https://news.naver.com/article/2" title="SK하이닉스 HBM 수주 확대">SK하이닉스 HBM 수주 확대</a>
+                <a data-heatmap-target=".tit" href="https://news.naver.com/article/2">SK하이닉스 HBM 수주 확대</a>
                 <span class="info_group"><a class="info press">매일경제</a></span>
             </li>
             <li class="bx">
-                <a class="news_tit" href="https://news.naver.com/article/3" title="카카오 신규 서비스 출시">카카오 신규 서비스 출시</a>
+                <a data-heatmap-target=".tit" href="https://news.naver.com/article/3">카카오 신규 서비스 출시</a>
                 <span class="info_group"><a class="info press">조선일보</a></span>
             </li>
         </ul>

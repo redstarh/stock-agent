@@ -2,39 +2,13 @@
 
 import asyncio
 import logging
-from html.parser import HTMLParser
 
 import httpx
+from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
 NAVER_SEARCH_URL = "https://search.naver.com/search.naver"
-
-
-class _NewsListParser(HTMLParser):
-    """네이버 뉴스 검색 결과 HTML에서 뉴스 항목 추출."""
-
-    def __init__(self):
-        super().__init__()
-        self.items: list[dict] = []
-        self._in_news_tit = False
-        self._current: dict = {}
-
-    def handle_starttag(self, tag, attrs):
-        attr_dict = dict(attrs)
-        if tag == "a" and "news_tit" in attr_dict.get("class", ""):
-            self._in_news_tit = True
-            self._current = {
-                "source_url": attr_dict.get("href", ""),
-                "title": attr_dict.get("title", ""),
-            }
-
-    def handle_endtag(self, tag):
-        if tag == "a" and self._in_news_tit:
-            self._in_news_tit = False
-            if self._current.get("title"):
-                self.items.append(self._current)
-            self._current = {}
 
 
 class NaverCollector:
@@ -59,19 +33,23 @@ class NaverCollector:
                     resp = await client.get(NAVER_SEARCH_URL, params=params)
                     resp.raise_for_status()
 
-                parser = _NewsListParser()
-                parser.feed(resp.text)
-
+                soup = BeautifulSoup(resp.text, "html.parser")
+                seen_urls: set[str] = set()
                 items = []
-                for raw in parser.items:
-                    item = {
-                        "title": raw["title"],
-                        "source_url": raw["source_url"],
+
+                for a_tag in soup.find_all("a", attrs={"data-heatmap-target": ".tit"}):
+                    href = a_tag.get("href", "")
+                    title = a_tag.get_text(strip=True)
+                    if not title or not href or href in seen_urls:
+                        continue
+                    seen_urls.add(href)
+                    items.append({
+                        "title": title,
+                        "source_url": href,
                         "source": "naver",
                         "market": market,
                         "stock_code": stock_code or "",
-                    }
-                    items.append(item)
+                    })
 
                 return items
 
