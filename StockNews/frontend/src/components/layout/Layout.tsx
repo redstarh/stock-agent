@@ -1,7 +1,7 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import type { Market } from '../../utils/constants';
+import { useMarket } from '../../contexts/MarketContext';
 import type { Notification } from '../../hooks/useWebSocket';
 
 interface LayoutProps {
@@ -21,7 +21,7 @@ export default function Layout({
   onMarkAllAsRead,
   onClearNotifications,
 }: LayoutProps) {
-  const [market, setMarket] = useState<Market>('KR');
+  const { market, setMarket } = useMarket();
 
   return (
     <div className="flex min-h-screen bg-gray-50">

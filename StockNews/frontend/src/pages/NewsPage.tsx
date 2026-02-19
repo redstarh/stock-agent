@@ -1,8 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchLatestNews } from '../api/news';
-import type { Market } from '../utils/constants';
-import MarketSelector from '../components/common/MarketSelector';
+import { useMarket } from '../contexts/MarketContext';
 import FilterPanel, { DEFAULT_FILTERS, type NewsFilters } from '../components/common/FilterPanel';
 import Loading from '../components/common/Loading';
 import NewsList from '../components/news/NewsList';
@@ -10,7 +9,7 @@ import NewsList from '../components/news/NewsList';
 const THEMES = ['반도체', '2차전지', 'AI/로봇', '바이오', '자동차', '에너지', '금융', '엔터'];
 
 export default function NewsPage() {
-  const [market, setMarket] = useState<Market>('KR');
+  const { market } = useMarket();
   const [filters, setFilters] = useState<NewsFilters>(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<NewsFilters>(DEFAULT_FILTERS);
 
@@ -52,7 +51,6 @@ export default function NewsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-900">최신 뉴스</h2>
-        <MarketSelector selected={market} onChange={setMarket} />
       </div>
 
       <FilterPanel

@@ -1,16 +1,14 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTopNews } from '../hooks/useTopNews';
 import { fetchThemeStrength } from '../api/themes';
-import type { Market } from '../utils/constants';
-import MarketSelector from '../components/common/MarketSelector';
+import { useMarket } from '../contexts/MarketContext';
 import Loading from '../components/common/Loading';
 import TopStockCards from '../components/news/TopStockCards';
 import ThemeStrengthChart from '../components/charts/ThemeStrengthChart';
 
 export default function DashboardPage() {
-  const [market, setMarket] = useState<Market>('KR');
+  const { market } = useMarket();
   const navigate = useNavigate();
 
   const topNews = useTopNews(market);
@@ -23,7 +21,6 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-900">대시보드</h2>
-        <MarketSelector selected={market} onChange={setMarket} />
       </div>
 
       <section>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MarketProvider } from './contexts/MarketContext';
 import Layout from './components/layout/Layout';
 import DashboardPage from './pages/DashboardPage';
 import NewsPage from './pages/NewsPage';
@@ -40,20 +41,22 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Layout
-          notifications={notifications}
-          unreadCount={unreadCount}
-          onMarkAsRead={markAsRead}
-          onMarkAllAsRead={markAllAsRead}
-          onClearNotifications={clearNotifications}
-        >
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/news" element={<NewsPage />} />
-            <Route path="/stocks/:code" element={<StockDetailPage />} />
-            <Route path="/themes" element={<ThemeAnalysisPage />} />
-          </Routes>
-        </Layout>
+        <MarketProvider>
+          <Layout
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkAsRead={markAsRead}
+            onMarkAllAsRead={markAllAsRead}
+            onClearNotifications={clearNotifications}
+          >
+            <Routes>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/news" element={<NewsPage />} />
+              <Route path="/stocks/:code" element={<StockDetailPage />} />
+              <Route path="/themes" element={<ThemeAnalysisPage />} />
+            </Routes>
+          </Layout>
+        </MarketProvider>
       </BrowserRouter>
 
       {toastMessage && (
