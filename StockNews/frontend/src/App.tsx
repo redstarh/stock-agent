@@ -18,7 +18,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/news';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8001/ws/news';
 
 export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
