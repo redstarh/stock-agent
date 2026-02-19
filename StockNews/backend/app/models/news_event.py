@@ -37,6 +37,7 @@ class NewsEvent(Base):
     source: Mapped[str] = mapped_column(String(50), nullable=False)
     source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True, unique=True)
     theme: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    kr_impact_themes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_disclosure: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     published_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

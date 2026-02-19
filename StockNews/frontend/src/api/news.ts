@@ -2,6 +2,15 @@ import { apiClient } from './client';
 import type { NewsScore, NewsTopItem, NewsItem } from '../types/news';
 import type { NewsListResponse } from '../types/api';
 
+export interface NewsFilterParams {
+  market?: string;
+  stock?: string;
+  sentiment?: string;
+  theme?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 /** Top 종목 뉴스 조회 */
 export function fetchTopNews(market: string, limit?: number): Promise<NewsTopItem[]> {
   const params = new URLSearchParams({ market });
@@ -13,10 +22,17 @@ export function fetchTopNews(market: string, limit?: number): Promise<NewsTopIte
 export function fetchLatestNews(
   offset = 0,
   limit = 20,
-  market?: string,
+  filters?: NewsFilterParams,
 ): Promise<NewsListResponse> {
   const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
-  if (market) params.set('market', market);
+
+  if (filters?.market) params.set('market', filters.market);
+  if (filters?.stock) params.set('stock', filters.stock);
+  if (filters?.sentiment && filters.sentiment !== 'all') params.set('sentiment', filters.sentiment);
+  if (filters?.theme) params.set('theme', filters.theme);
+  if (filters?.dateFrom) params.set('date_from', filters.dateFrom);
+  if (filters?.dateTo) params.set('date_to', filters.dateTo);
+
   return apiClient.get<NewsListResponse>(`/news/latest?${params}`);
 }
 

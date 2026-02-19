@@ -3,14 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useNewsScore } from '../hooks/useNewsScore';
 import { usePrediction } from '../hooks/usePrediction';
-import { fetchNewsByDate } from '../api/news';
+import { fetchNewsByDate, fetchLatestNews } from '../api/news';
 import Loading from '../components/common/Loading';
 import ScoreTimeline from '../components/charts/ScoreTimeline';
 import SentimentPie from '../components/charts/SentimentPie';
 import PredictionChart from '../components/charts/PredictionChart';
 import PredictionSignal from '../components/common/PredictionSignal';
 import ChartDrilldown from '../components/charts/ChartDrilldown';
-import FilterPanel, { DEFAULT_FILTERS, type NewsFilters } from '../components/common/FilterPanel';
+import NewsList from '../components/news/NewsList';
 import { formatScore } from '../utils/format';
 import type { NewsItem } from '../types/news';
 
@@ -20,13 +20,19 @@ export default function StockDetailPage() {
   const { score, timeline } = useNewsScore(code ?? '');
   const prediction = usePrediction(code ?? '');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [filters, setFilters] = useState<NewsFilters>(DEFAULT_FILTERS);
 
   // Fetch news for selected date
   const newsForDate = useQuery<NewsItem[]>({
     queryKey: ['newsByDate', code, selectedDate],
     queryFn: () => fetchNewsByDate(code ?? '', selectedDate ?? ''),
     enabled: !!code && !!selectedDate,
+  });
+
+  // Fetch related news for this stock
+  const stockNews = useQuery({
+    queryKey: ['stockNews', code],
+    queryFn: () => fetchLatestNews(0, 30, { stock: code }),
+    enabled: !!code,
   });
 
   const handlePointClick = (date: string) => {
@@ -36,9 +42,6 @@ export default function StockDetailPage() {
   const handleCloseDrilldown = () => {
     setSelectedDate(null);
   };
-
-  // Mock themes for filter panel (in real app, fetch from API)
-  const themes = ['반도체', '2차전지', 'AI/로봇', '바이오', '자동차'];
 
   return (
     <div className="space-y-6">
@@ -76,8 +79,6 @@ export default function StockDetailPage() {
       ) : null}
 
       <div className="space-y-6">
-        <FilterPanel filters={filters} themes={themes} onChange={setFilters} />
-
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <section>
             <h3 className="mb-3 font-semibold text-gray-700">스코어 타임라인</h3>
@@ -103,9 +104,9 @@ export default function StockDetailPage() {
               <Loading message="감성 데이터 로딩 중..." />
             ) : (
               <SentimentPie
-                positive={score.data?.sentiment_score ?? 0}
-                neutral={Math.max(0, 100 - (score.data?.sentiment_score ?? 0) - 20)}
-                negative={20}
+                positive={score.data?.positive_count ?? 0}
+                neutral={score.data?.neutral_count ?? 0}
+                negative={score.data?.negative_count ?? 0}
               />
             )}
           </section>
@@ -130,6 +131,25 @@ export default function StockDetailPage() {
                 confidence={prediction.data?.confidence ?? null}
               />
             </div>
+          )}
+        </section>
+
+        {/* Related News Section */}
+        <section className="mt-6">
+          <h3 className="mb-3 font-semibold text-gray-700">
+            관련 뉴스
+            {stockNews.data && (
+              <span className="ml-2 text-sm font-normal text-gray-400">
+                ({stockNews.data.total}건)
+              </span>
+            )}
+          </h3>
+          {stockNews.isLoading ? (
+            <Loading message="관련 뉴스 로딩 중..." />
+          ) : stockNews.isError ? (
+            <p className="text-red-500">뉴스를 불러올 수 없습니다</p>
+          ) : (
+            <NewsList items={stockNews.data?.items ?? []} />
           )}
         </section>
       </div>

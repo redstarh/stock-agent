@@ -1,5 +1,6 @@
 """뉴스 수집 파이프라인 — 수집 → 전처리 → 분석 → 저장 → 발행."""
 
+import json
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -64,7 +65,7 @@ def _get_redis_client():
         return None
 
 
-def _analyze_single(title: str, body: str | None) -> dict:
+def _analyze_single(title: str, body: str | None, market: str = "KR") -> dict:
     """단일 아이템의 LLM 분석 (감성 + 테마 + 요약). Thread-safe."""
     # 감성 분석 (Sonnet 4 via mid model)
     try:
@@ -73,11 +74,17 @@ def _analyze_single(title: str, body: str | None) -> dict:
         logger.warning("Sentiment failed: %s", e)
         sentiment_result = {"sentiment": "neutral", "score": 0.0, "confidence": 0.0}
 
-    # 테마 분류 (로컬, LLM 미사용)
-    combined_text = title
-    if body:
-        combined_text += " " + body[:500]
-    themes = classify_theme(combined_text)
+    # 테마 분류 (LLM 기반, Opus 모델 — 키워드 fallback)
+    try:
+        from app.processing.llm_theme_classifier import classify_theme_llm
+        from app.core.config import settings
+        themes = classify_theme_llm(title, body, model_id=settings.bedrock_model_id)
+    except Exception as e:
+        logger.warning("LLM theme failed, keyword fallback: %s", e)
+        combined_text = title
+        if body:
+            combined_text += " " + body[:500]
+        themes = classify_theme(combined_text)
 
     # 뉴스 요약 (Opus via default model)
     summary = ""
@@ -87,11 +94,21 @@ def _analyze_single(title: str, body: str | None) -> dict:
         except Exception as e:
             logger.warning("Summary failed: %s", e)
 
+    # Cross-market 영향 분석 (US 뉴스만)
+    kr_impact_themes = []
+    if market == "US":
+        try:
+            from app.processing.cross_market import analyze_kr_impact
+            kr_impact_themes = analyze_kr_impact(title, body)
+        except Exception as e:
+            logger.warning("Cross-market analysis failed: %s", e)
+
     return {
         "sentiment": sentiment_result["sentiment"],
         "sentiment_score": sentiment_result["score"],
         "themes": themes,
         "summary": summary,
+        "kr_impact_themes": kr_impact_themes,
     }
 
 
@@ -171,7 +188,7 @@ async def process_collected_items(
     with ThreadPoolExecutor(max_workers=LLM_MAX_WORKERS) as executor:
         future_to_idx = {}
         for idx, p in enumerate(prepared):
-            future = executor.submit(_analyze_single, p["title"], p["body"])
+            future = executor.submit(_analyze_single, p["title"], p["body"], market)
             future_to_idx[future] = idx
 
         done_count = 0
@@ -186,6 +203,7 @@ async def process_collected_items(
                     "sentiment_score": 0.0,
                     "themes": [],
                     "summary": "",
+                    "kr_impact_themes": [],
                 }
             done_count += 1
             if done_count % 50 == 0:
@@ -204,6 +222,7 @@ async def process_collected_items(
             themes = analysis["themes"]
             theme = ",".join(themes) if themes else None
             summary = analysis["summary"]
+            kr_impact_json = json.dumps(analysis.get("kr_impact_themes", []), ensure_ascii=False) if analysis.get("kr_impact_themes") else None
 
             recency = calc_recency(p["published_at"])
             frequency = calc_frequency(1)
@@ -224,6 +243,7 @@ async def process_collected_items(
                 source=p["source"],
                 source_url=p["source_url"] or None,
                 theme=theme,
+                kr_impact_themes=kr_impact_json,
                 is_disclosure=p["is_disclosure"],
                 published_at=p["published_at"],
             )

@@ -62,8 +62,8 @@ def _call_llm(text: str) -> dict:
 JSON만 반환하세요. 설명 없이 다음 형식으로:
 {"sentiment": "positive"|"neutral"|"negative", "score": float, "confidence": float}"""
 
-    mid_model = settings.bedrock_model_id_mid or ""
-    response_text = call_llm(system_prompt, text, model_id=mid_model)
+    # Opus 모델 사용 (감성분석 정확도 최고)
+    response_text = call_llm(system_prompt, text, model_id=settings.bedrock_model_id)
     return json.loads(response_text)
 
 

@@ -2,13 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTopNews } from '../hooks/useTopNews';
-import { fetchLatestNews } from '../api/news';
 import { fetchThemeStrength } from '../api/themes';
 import type { Market } from '../utils/constants';
 import MarketSelector from '../components/common/MarketSelector';
 import Loading from '../components/common/Loading';
 import TopStockCards from '../components/news/TopStockCards';
-import NewsList from '../components/news/NewsList';
 import ThemeStrengthChart from '../components/charts/ThemeStrengthChart';
 
 export default function DashboardPage() {
@@ -16,10 +14,6 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   const topNews = useTopNews(market);
-  const latestNews = useQuery({
-    queryKey: ['latestNews', market],
-    queryFn: () => fetchLatestNews(0, 10, market),
-  });
   const themes = useQuery({
     queryKey: ['themeStrength', market],
     queryFn: () => fetchThemeStrength(market),
@@ -46,25 +40,14 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section>
-          <h3 className="mb-3 font-semibold text-gray-700">최신 뉴스</h3>
-          {latestNews.isLoading ? (
-            <Loading message="뉴스 로딩 중..." />
-          ) : (
-            <NewsList items={latestNews.data?.items ?? []} />
-          )}
-        </section>
-
-        <section>
-          <h3 className="mb-3 font-semibold text-gray-700">테마 강도</h3>
-          {themes.isLoading ? (
-            <Loading message="테마 로딩 중..." />
-          ) : (
-            <ThemeStrengthChart data={themes.data ?? []} />
-          )}
-        </section>
-      </div>
+      <section>
+        <h3 className="mb-3 font-semibold text-gray-700">테마 강도</h3>
+        {themes.isLoading ? (
+          <Loading message="테마 로딩 중..." />
+        ) : (
+          <ThemeStrengthChart data={themes.data ?? []} />
+        )}
+      </section>
     </div>
   );
 }

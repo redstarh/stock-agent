@@ -37,6 +37,9 @@ class NewsScoreResponse(BaseModel):
     sentiment_score: float = 0.0
     disclosure: float = 0.0
     news_count: int = 0
+    positive_count: int = 0
+    neutral_count: int = 0
+    negative_count: int = 0
     top_themes: list[str] = []
     updated_at: datetime | None = None
 
@@ -59,3 +62,5 @@ class NewsTopItem(BaseModel):
     sentiment: str
     news_count: int
     market: str
+    prediction_score: float | None = None
+    direction: str | None = None  # "up" | "down" | "neutral"

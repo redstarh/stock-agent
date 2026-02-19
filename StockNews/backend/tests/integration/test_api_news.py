@@ -59,6 +59,20 @@ class TestNewsTopEndpoint:
         resp = await async_client.get("/api/v1/news/top")
         assert resp.status_code == 422
 
+    @pytest.mark.asyncio
+    async def test_top_news_includes_prediction(self, async_client):
+        """GET /api/v1/news/top → prediction_score and direction 포함."""
+        resp = await async_client.get("/api/v1/news/top", params={"market": "KR", "limit": 1})
+        assert resp.status_code == 200
+        items = resp.json()
+        if items:
+            item = items[0]
+            assert "prediction_score" in item
+            assert "direction" in item
+            if item["prediction_score"] is not None:
+                assert 0 <= item["prediction_score"] <= 100
+                assert item["direction"] in ["up", "down", "neutral"]
+
 
 class TestNewsLatestEndpoint:
     @pytest.mark.asyncio

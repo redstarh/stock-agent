@@ -10,6 +10,7 @@ class ThemeItem(BaseModel):
     strength_score: float
     news_count: int
     sentiment_avg: float
+    rise_index: float = 0.0  # 0-100, 국내+국외 뉴스 종합 상승지수
     date: str
     market: str
 

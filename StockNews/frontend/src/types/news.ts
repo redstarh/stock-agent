@@ -28,6 +28,9 @@ export interface NewsScore {
   sentiment_score: number;
   disclosure: number;
   news_count: number;
+  positive_count: number;
+  neutral_count: number;
+  negative_count: number;
   top_themes?: string[];
   updated_at?: string | null;
 }
@@ -40,6 +43,8 @@ export interface NewsTopItem {
   sentiment: Sentiment;
   news_count: number;
   market: string;
+  prediction_score: number | null;
+  direction: 'up' | 'down' | 'neutral' | null;
 }
 
 /** 스코어 타임라인 포인트 */

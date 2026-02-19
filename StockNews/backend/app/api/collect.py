@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -100,3 +100,98 @@ async def get_collect_status():
         }
     except Exception as e:
         return {"status": "error", "detail": str(e)}
+
+
+@router.post("/analyze-cross-market")
+async def analyze_cross_market(
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    """기존 US 뉴스의 한국 시장 영향 재분석 (Bedrock Claude)."""
+    import json as _json
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from app.processing.cross_market import analyze_kr_impact
+    from app.models.news_event import NewsEvent
+
+    us_news = (
+        db.query(NewsEvent)
+        .filter(
+            NewsEvent.market == "US",
+            NewsEvent.kr_impact_themes.is_(None),
+        )
+        .limit(limit)
+        .all()
+    )
+
+    if not us_news:
+        return {"message": "No US news to analyze", "analyzed": 0}
+
+    analyzed = 0
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_news = {
+            executor.submit(analyze_kr_impact, n.title, n.content): n
+            for n in us_news
+        }
+        for future in as_completed(future_to_news):
+            news = future_to_news[future]
+            try:
+                impacts = future.result()
+                if impacts:
+                    news.kr_impact_themes = _json.dumps(impacts, ensure_ascii=False)
+                    analyzed += 1
+            except Exception as e:
+                logger.warning("Re-analysis failed for %s: %s", news.title[:30], e)
+
+    db.commit()
+    return {"message": f"Analyzed {analyzed}/{len(us_news)} US news", "analyzed": analyzed}
+
+
+@router.post("/reclassify-themes")
+async def reclassify_themes(
+    limit: int = Query(500, ge=1, le=1000),
+    db: Session = Depends(get_db),
+):
+    """기존 뉴스 테마를 LLM(Sonnet)으로 재분류 (병렬 처리)."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from app.processing.llm_theme_classifier import classify_theme_llm
+    from app.models.news_event import NewsEvent
+
+    model_id = settings.bedrock_model_id  # Opus (분류 정확도 최고)
+
+    news_list = (
+        db.query(NewsEvent)
+        .order_by(NewsEvent.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    if not news_list:
+        return {"message": "No news to reclassify", "reclassified": 0}
+
+    def _classify(news_item):
+        themes = classify_theme_llm(news_item.title, news_item.content, model_id=model_id)
+        return news_item, themes
+
+    reclassified = 0
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(_classify, n) for n in news_list]
+        done = 0
+        for future in as_completed(futures):
+            try:
+                news, themes = future.result()
+                new_theme = ",".join(themes) if themes else None
+                if news.theme != new_theme:
+                    news.theme = new_theme
+                    reclassified += 1
+            except Exception as e:
+                logger.warning("Reclassify failed: %s", e)
+            done += 1
+            if done % 50 == 0:
+                logger.info("Reclassify progress: %d/%d", done, len(news_list))
+
+    db.commit()
+    return {
+        "message": f"Reclassified {reclassified}/{len(news_list)} news",
+        "total": len(news_list),
+        "changed": reclassified,
+    }

@@ -14,6 +14,7 @@ export default function Sidebar({ market, onMarketChange }: SidebarProps) {
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: '📊' },
+    { path: '/news', label: 'Latest News', icon: '📰' },
     { path: '/themes', label: 'Theme Analysis', icon: '🎯' },
   ];
 

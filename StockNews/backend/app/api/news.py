@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.core.limiter import limiter
 
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.models.news_event import NewsEvent
 from app.schemas.news import NewsItem, NewsListResponse, NewsScoreResponse, NewsTopItem
 
@@ -47,6 +47,11 @@ async def get_news_score(
     # Updated at: max published_at
     updated_at = max((r.published_at for r in rows if r.published_at), default=None)
 
+    # 감성별 건수
+    positive_count = sum(1 for r in rows if r.sentiment == "positive")
+    negative_count = sum(1 for r in rows if r.sentiment == "negative")
+    neutral_count = len(rows) - positive_count - negative_count
+
     return NewsScoreResponse(
         stock_code=stock,
         stock_name=stock_name,
@@ -56,6 +61,9 @@ async def get_news_score(
         sentiment_score=round(avg_sentiment, 2),
         disclosure=disclosure,
         news_count=len(rows),
+        positive_count=positive_count,
+        neutral_count=neutral_count,
+        negative_count=negative_count,
         top_themes=top_themes,
         updated_at=updated_at,
     )
@@ -76,28 +84,48 @@ async def get_top_news(
             NewsEvent.stock_code,
             NewsEvent.stock_name,
             func.avg(NewsEvent.news_score).label("avg_score"),
+            func.avg(NewsEvent.sentiment_score).label("avg_sentiment"),
             func.max(NewsEvent.sentiment).label("sentiment"),
             func.count(NewsEvent.id).label("cnt"),
             NewsEvent.market,
         )
         .filter(NewsEvent.market == market)
         .group_by(NewsEvent.stock_code, NewsEvent.stock_name, NewsEvent.market)
-        .order_by(func.avg(NewsEvent.news_score).desc())
-        .limit(limit)
         .all()
     )
 
-    return [
-        NewsTopItem(
-            stock_code=r.stock_code,
-            stock_name=r.stock_name,
-            news_score=round(r.avg_score, 2),
-            sentiment=r.sentiment,
-            news_count=r.cnt,
-            market=r.market,
+    # Calculate prediction scores and sort by them
+    items = []
+    for r in results:
+        avg_score = r.avg_score or 0.0
+        avg_sentiment = r.avg_sentiment or 0.0
+
+        # Same heuristic as prediction.py
+        prediction_score = min(100, max(0, avg_score * 0.6 + (avg_sentiment + 1) * 20))
+
+        if prediction_score > 60:
+            direction = "up"
+        elif prediction_score < 40:
+            direction = "down"
+        else:
+            direction = "neutral"
+
+        items.append(
+            NewsTopItem(
+                stock_code=r.stock_code,
+                stock_name=r.stock_name,
+                news_score=round(avg_score, 2),
+                sentiment=r.sentiment,
+                news_count=r.cnt,
+                market=r.market,
+                prediction_score=round(prediction_score, 1),
+                direction=direction,
+            )
         )
-        for r in results
-    ]
+
+    # Sort by prediction_score descending and limit
+    items.sort(key=lambda x: x.prediction_score or 0, reverse=True)
+    return items[:limit]
 
 
 @router.get("/latest", response_model=NewsListResponse)
@@ -106,6 +134,11 @@ async def get_latest_news(
     request: Request,
     response: Response,
     market: str | None = Query(None, description="마켓 필터 (KR/US)"),
+    stock: str | None = Query(None, description="종목 코드/이름 검색"),
+    sentiment: str | None = Query(None, description="감성 필터 (positive/neutral/negative)"),
+    theme: str | None = Query(None, description="테마 필터"),
+    date_from: str | None = Query(None, description="시작일 (YYYY-MM-DD)"),
+    date_to: str | None = Query(None, description="종료일 (YYYY-MM-DD)"),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -115,6 +148,32 @@ async def get_latest_news(
 
     if market:
         query = query.filter(NewsEvent.market == market)
+
+    if stock:
+        search_term = f"%{stock}%"
+        query = query.filter(
+            (NewsEvent.stock_code.ilike(search_term))
+            | (NewsEvent.stock_name.ilike(search_term))
+        )
+
+    if sentiment:
+        query = query.filter(NewsEvent.sentiment == sentiment)
+
+    if theme:
+        theme_term = f"%{theme}%"
+        query = query.filter(NewsEvent.theme.ilike(theme_term))
+
+    if date_from:
+        from datetime import datetime
+
+        date_from_obj = datetime.strptime(date_from, "%Y-%m-%d").date()
+        query = query.filter(func.date(NewsEvent.published_at) >= date_from_obj)
+
+    if date_to:
+        from datetime import datetime
+
+        date_to_obj = datetime.strptime(date_to, "%Y-%m-%d").date()
+        query = query.filter(func.date(NewsEvent.published_at) <= date_to_obj)
 
     total = query.count()
     items = (

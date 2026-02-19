@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { Sentiment } from '../../types/news';
 
 export interface NewsFilters {
+  stock: string;
   dateFrom: string;
   dateTo: string;
   sentiment: Sentiment | 'all';
@@ -12,16 +13,19 @@ interface FilterPanelProps {
   filters: NewsFilters;
   themes: string[];
   onChange: (filters: NewsFilters) => void;
+  onApply?: () => void;
+  showStockSearch?: boolean;
 }
 
 export const DEFAULT_FILTERS: NewsFilters = {
+  stock: '',
   dateFrom: '',
   dateTo: '',
   sentiment: 'all',
   theme: '',
 };
 
-export default function FilterPanel({ filters, themes, onChange }: FilterPanelProps) {
+export default function FilterPanel({ filters, themes, onChange, onApply, showStockSearch = false }: FilterPanelProps) {
   const update = useCallback(
     (key: keyof NewsFilters, value: string) => {
       onChange({ ...filters, [key]: value });
@@ -33,6 +37,19 @@ export default function FilterPanel({ filters, themes, onChange }: FilterPanelPr
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-white p-3">
+      {showStockSearch && (
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-500">종목</label>
+          <input
+            type="text"
+            value={filters.stock}
+            onChange={(e) => update('stock', e.target.value)}
+            placeholder="종목명/코드 검색"
+            className="rounded border px-2 py-1 text-sm"
+          />
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         <label className="text-sm text-gray-500">기간</label>
         <input
@@ -77,6 +94,15 @@ export default function FilterPanel({ filters, themes, onChange }: FilterPanelPr
           ))}
         </select>
       </div>
+
+      {onApply && (
+        <button
+          onClick={onApply}
+          className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
+        >
+          검색
+        </button>
+      )}
 
       <button
         onClick={handleReset}

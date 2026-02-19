@@ -10,6 +10,8 @@ export const mockNewsTop = (market: string = 'KR') => [
     sentiment: 'positive',
     news_count: 12,
     market,
+    prediction_score: 75.2,
+    direction: 'up' as const,
   },
   {
     stock_code: market === 'KR' ? '000660' : 'MSFT',
@@ -18,6 +20,8 @@ export const mockNewsTop = (market: string = 'KR') => [
     sentiment: 'neutral',
     news_count: 8,
     market,
+    prediction_score: 55.8,
+    direction: 'neutral' as const,
   },
 ];
 

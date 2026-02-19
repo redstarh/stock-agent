@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from './components/layout/Layout';
 import DashboardPage from './pages/DashboardPage';
+import NewsPage from './pages/NewsPage';
 import StockDetailPage from './pages/StockDetailPage';
 import ThemeAnalysisPage from './pages/ThemeAnalysisPage';
 import Toast from './components/common/Toast';
@@ -48,6 +49,7 @@ export default function App() {
         >
           <Routes>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/news" element={<NewsPage />} />
             <Route path="/stocks/:code" element={<StockDetailPage />} />
             <Route path="/themes" element={<ThemeAnalysisPage />} />
           </Routes>

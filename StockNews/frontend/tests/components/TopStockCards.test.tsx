@@ -11,6 +11,8 @@ const items: NewsTopItem[] = [
     sentiment: 'positive',
     news_count: 12,
     market: 'KR',
+    prediction_score: 75.2,
+    direction: 'up',
   },
   {
     stock_code: '000660',
@@ -19,6 +21,8 @@ const items: NewsTopItem[] = [
     sentiment: 'neutral',
     news_count: 8,
     market: 'KR',
+    prediction_score: 55.8,
+    direction: 'neutral',
   },
 ];
 
@@ -29,10 +33,10 @@ describe('TopStockCards', () => {
     expect(screen.getByText('SK하이닉스')).toBeInTheDocument();
   });
 
-  it('renders news scores formatted', () => {
+  it('renders prediction scores formatted', () => {
     render(<TopStockCards items={items} />);
-    expect(screen.getByText('85.5')).toBeInTheDocument();
-    expect(screen.getByText('72.3')).toBeInTheDocument();
+    expect(screen.getByText(/75\.2/)).toBeInTheDocument();
+    expect(screen.getByText(/55\.8/)).toBeInTheDocument();
   });
 
   it('renders sentiment labels in Korean', () => {
@@ -41,10 +45,10 @@ describe('TopStockCards', () => {
     expect(screen.getByText('중립')).toBeInTheDocument();
   });
 
-  it('renders news count', () => {
+  it('renders direction labels and news count', () => {
     render(<TopStockCards items={items} />);
-    expect(screen.getByText('뉴스 12건')).toBeInTheDocument();
-    expect(screen.getByText('뉴스 8건')).toBeInTheDocument();
+    expect(screen.getByText(/상승 예측.*뉴스 12건/)).toBeInTheDocument();
+    expect(screen.getByText(/중립.*뉴스 8건/)).toBeInTheDocument();
   });
 
   it('calls onStockClick with stock code when clicked', async () => {
