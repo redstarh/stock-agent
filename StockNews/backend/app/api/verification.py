@@ -8,6 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Respons
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.auth import verify_api_key
 from app.core.database import get_db
 from app.core.limiter import limiter
 from app.models.verification import (
@@ -36,7 +37,11 @@ from app.schemas.verification import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/verification", tags=["verification"])
+router = APIRouter(
+    prefix="/verification",
+    tags=["verification"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 
 @router.get("/daily", response_model=DailyVerificationResponse)

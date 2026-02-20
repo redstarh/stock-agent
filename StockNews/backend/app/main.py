@@ -17,6 +17,7 @@ from app.api.websocket import router as ws_router
 from app.core.config import settings
 from app.core.database import engine
 from app.core.limiter import limiter
+from app.core.monitoring import init_sentry, sanitize_exception_message, setup_prometheus
 from app.models.base import Base
 import app.models  # noqa: F401 — register all models with Base.metadata
 
@@ -26,6 +27,13 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """애플리케이션 시작/종료 이벤트."""
+    # Startup: Initialize Sentry
+    init_sentry(
+        dsn=settings.sentry_dsn,
+        environment=settings.app_env,
+        debug=settings.debug,
+    )
+
     # Startup: 테이블 생성 (MVP — production에서는 Alembic 사용)
     Base.metadata.create_all(bind=engine)
 
@@ -62,8 +70,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-Request-ID"],
 )
 
 # Routers
@@ -73,11 +81,21 @@ app.include_router(prediction_router)
 app.include_router(summary_router)
 app.include_router(ws_router)
 
+# Prometheus metrics (after routers to avoid middleware interference)
+if settings.enable_metrics:
+    setup_prometheus(app)
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """전역 예외 핸들러."""
+    # Log the exception
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+
+    # Return sanitized error message
+    error_message = sanitize_exception_message(exc, settings.debug)
+
     return JSONResponse(
         status_code=500,
-        content={"detail": str(exc), "status_code": 500},
+        content={"detail": error_message, "status_code": 500},
     )

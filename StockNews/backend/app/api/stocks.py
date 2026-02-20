@@ -5,11 +5,16 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.limiter import limiter
 
+from app.core.auth import verify_api_key
 from app.core.database import get_db
 from app.models.news_event import NewsEvent
 from app.schemas.common import TimelinePoint
 
-router = APIRouter(prefix="/stocks", tags=["stocks"])
+router = APIRouter(
+    prefix="/stocks",
+    tags=["stocks"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 
 @router.get("/{stock_code}/timeline", response_model=list[TimelinePoint])

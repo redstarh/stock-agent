@@ -1,11 +1,16 @@
 """뉴스 요약 API."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from app.core.auth import verify_api_key
 from app.processing.summary import summarize_news
 
-router = APIRouter(prefix="/api/v1", tags=["summary"])
+router = APIRouter(
+    prefix="/api/v1",
+    tags=["summary"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 
 class SummarizeRequest(BaseModel):

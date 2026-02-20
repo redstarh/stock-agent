@@ -3,19 +3,30 @@
 import asyncio
 import logging
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.orm import Session
 
+from app.core.auth import verify_api_key
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.limiter import limiter
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/collect", tags=["collect"])
+router = APIRouter(
+    prefix="/collect",
+    tags=["collect"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 
 @router.post("/kr")
-async def collect_kr_news(db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def collect_kr_news(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
     """한국 뉴스 즉시 수집."""
     from app.collectors.naver import NaverCollector
     from app.collectors.pipeline import process_collected_items
@@ -51,7 +62,12 @@ async def collect_kr_news(db: Session = Depends(get_db)):
 
 
 @router.post("/us")
-async def collect_us_news(db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+async def collect_us_news(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
     """미국 뉴스 즉시 수집."""
     from app.collectors.finnhub import FinnhubCollector
     from app.collectors.pipeline import process_collected_items
@@ -70,7 +86,8 @@ async def collect_us_news(db: Session = Depends(get_db)):
 
 
 @router.get("/status")
-async def get_collect_status():
+@limiter.limit("30/minute")
+async def get_collect_status(request: Request, response: Response):
     """스케줄러 상태 조회."""
     try:
         from app.collectors.scheduler import create_scheduler
@@ -103,7 +120,10 @@ async def get_collect_status():
 
 
 @router.post("/analyze-cross-market")
+@limiter.limit("30/minute")
 async def analyze_cross_market(
+    request: Request,
+    response: Response,
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
 ):
@@ -147,7 +167,10 @@ async def analyze_cross_market(
 
 
 @router.post("/reclassify-themes")
+@limiter.limit("30/minute")
 async def reclassify_themes(
+    request: Request,
+    response: Response,
     limit: int = Query(500, ge=1, le=1000),
     db: Session = Depends(get_db),
 ):

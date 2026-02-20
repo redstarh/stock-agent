@@ -5,11 +5,16 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.limiter import limiter
 
+from app.core.auth import verify_api_key
 from app.core.database import get_db
 from app.models.news_event import NewsEvent
 from app.schemas.prediction import PredictionResponse
 
-router = APIRouter(prefix="/api/v1", tags=["prediction"])
+router = APIRouter(
+    prefix="/api/v1",
+    tags=["prediction"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 
 @router.get("/stocks/{code}/prediction", response_model=PredictionResponse)

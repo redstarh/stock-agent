@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:5173"]
 
+    # Authentication
+    api_key: str = "dev-api-key-change-in-production"
+    require_auth: bool = False
+
+    # Monitoring
+    sentry_dsn: str = ""
+    enable_metrics: bool = True
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

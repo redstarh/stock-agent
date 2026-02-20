@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.auth import verify_api_key
 from app.core.database import get_db
 from app.core.limiter import limiter
 from app.models.training import StockTrainingData
@@ -19,7 +20,11 @@ from app.schemas.training import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/training", tags=["training"])
+router = APIRouter(
+    prefix="/training",
+    tags=["training"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 
 @router.get("/data", response_model=TrainingDataResponse)
