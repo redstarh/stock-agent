@@ -17,6 +17,7 @@ export default function Sidebar({ market, onMarketChange }: SidebarProps) {
     { path: '/news', label: 'Latest News', icon: '📰' },
     { path: '/themes', label: 'Theme Analysis', icon: '🎯' },
     { path: '/verification', label: 'Verification', icon: '✅' },
+    { path: '/ml-dashboard', label: 'ML Dashboard', icon: '🤖' },
   ];
 
   return (

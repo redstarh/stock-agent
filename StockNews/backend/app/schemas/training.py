@@ -42,6 +42,8 @@ class TrainingDataItem(BaseModel):
     usd_krw_change: float | None = None
     has_earnings_disclosure: bool | None = None
     cross_theme_score: float | None = None
+    foreign_net_ratio: float | None = None
+    sector_index_change: float | None = None
     day_of_week: int
 
     # 예측

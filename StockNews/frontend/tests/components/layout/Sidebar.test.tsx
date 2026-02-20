@@ -11,7 +11,7 @@ describe('Sidebar', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('link', { name: /Dashboard/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^📊\s*Dashboard$/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Theme Analysis/ })).toBeInTheDocument();
   });
 

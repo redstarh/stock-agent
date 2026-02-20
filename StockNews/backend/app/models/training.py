@@ -49,6 +49,9 @@ class StockTrainingData(Base):
     usd_krw_change: Mapped[float | None] = mapped_column(Float, nullable=True)
     has_earnings_disclosure: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)
     cross_theme_score: Mapped[float | None] = mapped_column(Float, nullable=True, default=0.0)
+    # === Tier 3 고급 피처 ===
+    foreign_net_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sector_index_change: Mapped[float | None] = mapped_column(Float, nullable=True)
     day_of_week: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # === 예측 결과 ===

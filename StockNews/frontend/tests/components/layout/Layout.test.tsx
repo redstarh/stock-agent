@@ -59,7 +59,8 @@ describe('Layout', () => {
     expect(screen.getByRole('complementary')).toBeInTheDocument();
 
     // Check that navigation items exist (multiple matches expected in Header + Sidebar)
-    expect(screen.getAllByRole('link', { name: /Dashboard/ })).toHaveLength(2);
+    // "Dashboard" matches both "Dashboard" and "ML Dashboard" links
+    expect(screen.getAllByRole('link', { name: /Dashboard/ })).toHaveLength(3);
     expect(screen.getAllByRole('link', { name: /Theme Analysis/ })).toHaveLength(2);
 
     // Check MarketSelector is present

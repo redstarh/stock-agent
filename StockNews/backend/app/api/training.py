@@ -1,5 +1,6 @@
 """학습 데이터 조회/내보내기 API."""
 
+import json
 import logging
 from datetime import date, timedelta
 
@@ -10,7 +11,12 @@ from sqlalchemy.orm import Session
 from app.core.auth import verify_api_key
 from app.core.database import get_db
 from app.core.limiter import limiter
+from app.models.ml_model import MLModel
 from app.models.training import StockTrainingData
+from app.processing.feature_config import get_features_for_tier, get_min_samples_for_tier
+from app.processing.ml_evaluator import MLEvaluator
+from app.processing.ml_trainer import MLTrainer
+from app.processing.model_registry import ModelRegistry
 from app.processing.training_data_builder import export_training_csv
 from app.schemas.training import (
     TrainingDataItem,
@@ -87,6 +93,8 @@ async def get_training_data(
             usd_krw_change=r.usd_krw_change,
             has_earnings_disclosure=r.has_earnings_disclosure,
             cross_theme_score=r.cross_theme_score,
+            foreign_net_ratio=r.foreign_net_ratio,
+            sector_index_change=r.sector_index_change,
             day_of_week=r.day_of_week,
             predicted_direction=r.predicted_direction,
             predicted_score=r.predicted_score,
@@ -223,5 +231,173 @@ async def trigger_backfill(
         "status": "dry_run" if dry_run else "completed",
         "market": market,
         "days_back": days_back,
+        **result,
+    }
+
+
+@router.post("/train")
+@limiter.limit("5/minute")
+async def train_model(
+    request: Request,
+    response: Response,
+    market: str = Query("KR", description="KR or US"),
+    model_type: str = Query("lightgbm", description="lightgbm or random_forest"),
+    feature_tier: int = Query(1, ge=1, le=3, description="Feature tier"),
+    db: Session = Depends(get_db),
+):
+    """모델 학습 실행."""
+    features = get_features_for_tier(feature_tier)
+    min_samples = get_min_samples_for_tier(feature_tier)
+
+    trainer = MLTrainer(market=market, tier=feature_tier)
+
+    try:
+        X, y = trainer.load_training_data(db)
+    except ValueError as e:
+        # Insufficient samples
+        return {
+            "status": "insufficient_data",
+            "samples": 0,
+            "required": min_samples,
+            "feature_tier": feature_tier,
+        }
+
+    if len(X) < min_samples:
+        return {
+            "status": "insufficient_data",
+            "samples": len(X),
+            "required": min_samples,
+            "feature_tier": feature_tier,
+        }
+
+    if model_type == "lightgbm":
+        result = trainer.train_lightgbm(X, y)
+    else:
+        result = trainer.train_random_forest(X, y)
+
+    # Save to registry
+    registry = ModelRegistry()
+    model_id = registry.save(
+        model=result["model"],
+        metadata={
+            "model_name": f"{model_type}_{market}_t{feature_tier}",
+            "model_version": "1.0",
+            "model_type": model_type,
+            "market": market,
+            "feature_tier": feature_tier,
+            "feature_list": features,
+            "train_accuracy": result["accuracy"],
+            "test_accuracy": None,
+            "cv_accuracy": result["cv_accuracy"],
+            "cv_std": result["cv_std"],
+            "train_samples": len(X),
+            "test_samples": None,
+            "hyperparameters": {},
+            "feature_importances": result.get("feature_importances"),
+        },
+        db=db,
+    )
+
+    return {
+        "status": "trained",
+        "model_id": model_id,
+        "model_type": model_type,
+        "market": market,
+        "feature_tier": feature_tier,
+        "train_accuracy": round(result["accuracy"], 4),
+        "test_accuracy": None,
+        "cv_accuracy": round(result["cv_accuracy"], 4),
+        "cv_std": round(result["cv_std"], 4),
+        "samples": len(X),
+        "features": len(features),
+    }
+
+
+@router.get("/models")
+@limiter.limit("60/minute")
+async def list_models(
+    request: Request,
+    response: Response,
+    market: str | None = Query(None, description="Filter by market"),
+    db: Session = Depends(get_db),
+):
+    """등록된 ML 모델 목록."""
+    registry = ModelRegistry()
+    models = registry.list_models(market=market, db=db)
+
+    return [
+        {
+            "id": m.id,
+            "model_name": m.model_name,
+            "model_version": m.model_version,
+            "model_type": m.model_type,
+            "market": m.market,
+            "feature_tier": m.feature_tier,
+            "feature_list": json.loads(m.feature_list) if m.feature_list else [],
+            "train_accuracy": m.train_accuracy,
+            "test_accuracy": m.test_accuracy,
+            "cv_accuracy": m.cv_accuracy,
+            "cv_std": m.cv_std,
+            "train_samples": m.train_samples,
+            "test_samples": m.test_samples,
+            "is_active": m.is_active,
+            "feature_importances": json.loads(m.feature_importances) if m.feature_importances else None,
+            "created_at": m.created_at.isoformat() if m.created_at else None,
+        }
+        for m in models
+    ]
+
+
+@router.post("/models/{model_id}/activate")
+@limiter.limit("10/minute")
+async def activate_model(
+    request: Request,
+    response: Response,
+    model_id: int,
+    db: Session = Depends(get_db),
+):
+    """모델 활성화."""
+    registry = ModelRegistry()
+    try:
+        registry.activate(model_id, db)
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return {"status": "activated", "model_id": model_id}
+
+
+@router.post("/evaluate")
+@limiter.limit("10/minute")
+async def evaluate_model(
+    request: Request,
+    response: Response,
+    market: str = Query("KR", description="KR or US"),
+    db: Session = Depends(get_db),
+):
+    """활성 모델 평가."""
+    registry = ModelRegistry()
+    active = registry.get_active(market, db)
+
+    if not active:
+        return {"status": "no_active_model", "market": market}
+
+    feature_list = json.loads(active.feature_list) if active.feature_list else []
+
+    trainer = MLTrainer(market=market, tier=active.feature_tier)
+    X, y = trainer.load_training_data(db)
+
+    if X.empty:
+        return {"status": "no_data", "market": market}
+
+    model = registry.load(active.id, db)
+    evaluator = MLEvaluator()
+    result = evaluator.evaluate(model, X, y)
+
+    return {
+        "status": "evaluated",
+        "model_id": active.id,
+        "model_name": active.model_name,
+        "market": market,
         **result,
     }
