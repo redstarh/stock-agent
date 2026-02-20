@@ -36,9 +36,9 @@ describe('StockDetailPage', () => {
   it('displays stock name and score after loading', async () => {
     renderWithRoute('005930');
     await waitFor(() => {
-      expect(screen.getByText('삼성전자')).toBeInTheDocument();
+      expect(screen.getAllByText('삼성전자').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText('85.5')).toBeInTheDocument();
+    expect(screen.getAllByText('85.5').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows loading state initially', () => {

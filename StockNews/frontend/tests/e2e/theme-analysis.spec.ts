@@ -27,14 +27,14 @@ test.describe('Theme Analysis Page', () => {
     }
   });
 
-  test('themes are sorted by strength score descending', async ({ page }) => {
+  test('themes are sorted by rise_index descending', async ({ page }) => {
     // Each theme item has a unique "뉴스 N건" — go up 2 levels to the full item row
     const newsCountLabels = page.getByText(/^뉴스 \d+건$/);
     await expect(newsCountLabels).toHaveCount(3);
 
-    // xpath=../.. goes from <span> → <div> → theme item <div>
+    // Sorted by rise_index: 반도체(72.0) > AI/로봇(65.0) > 2차전지(48.0)
     await expect(newsCountLabels.nth(0).locator('xpath=../..')).toContainText('반도체');
-    await expect(newsCountLabels.nth(1).locator('xpath=../..')).toContainText('2차전지');
-    await expect(newsCountLabels.nth(2).locator('xpath=../..')).toContainText('AI/로봇');
+    await expect(newsCountLabels.nth(1).locator('xpath=../..')).toContainText('AI/로봇');
+    await expect(newsCountLabels.nth(2).locator('xpath=../..')).toContainText('2차전지');
   });
 });

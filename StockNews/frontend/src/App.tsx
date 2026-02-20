@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage';
 import NewsPage from './pages/NewsPage';
 import StockDetailPage from './pages/StockDetailPage';
 import ThemeAnalysisPage from './pages/ThemeAnalysisPage';
+import VerificationPage from './pages/VerificationPage';
 import Toast from './components/common/Toast';
 import { useWebSocket } from './hooks/useWebSocket';
 import type { BreakingNewsData } from './types/api';
@@ -54,6 +55,7 @@ export default function App() {
               <Route path="/news" element={<NewsPage />} />
               <Route path="/stocks/:code" element={<StockDetailPage />} />
               <Route path="/themes" element={<ThemeAnalysisPage />} />
+              <Route path="/verification" element={<VerificationPage />} />
             </Routes>
           </Layout>
         </MarketProvider>

@@ -47,7 +47,7 @@ export function useWebSocket(
           setNotifications((prev) => [notification, ...prev].slice(0, 10)); // Keep last 10
 
           if (onBreakingNews) {
-            onBreakingNews(msg.data as BreakingNewsData);
+            onBreakingNews(msg.data as unknown as BreakingNewsData);
           }
         }
       } catch {

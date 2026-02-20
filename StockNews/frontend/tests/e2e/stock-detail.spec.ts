@@ -13,7 +13,7 @@ test.describe('Stock Detail Page', () => {
 
   test('shows news score breakdown', async ({ page }) => {
     // Main score displayed
-    await expect(page.getByText('삼성전자')).toBeVisible();
+    await expect(page.getByText('삼성전자').first()).toBeVisible();
     // Sub-scores visible
     await expect(page.getByText(/최신성/)).toBeVisible();
     await expect(page.getByText(/빈도/)).toBeVisible();

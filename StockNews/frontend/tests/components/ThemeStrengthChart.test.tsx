@@ -11,8 +11,8 @@ class ResizeObserverMock {
 globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
 const data: ThemeItem[] = [
-  { theme: 'AI', strength_score: 92.5, news_count: 45, sentiment_avg: 0.7, date: '2024-01-15', market: 'KR' },
-  { theme: '반도체', strength_score: 88.3, news_count: 38, sentiment_avg: 0.6, date: '2024-01-15', market: 'KR' },
+  { theme: 'AI', strength_score: 92.5, news_count: 45, sentiment_avg: 0.7, rise_index: 75.0, date: '2024-01-15', market: 'KR' },
+  { theme: '반도체', strength_score: 88.3, news_count: 38, sentiment_avg: 0.6, rise_index: 68.0, date: '2024-01-15', market: 'KR' },
 ];
 
 describe('ThemeStrengthChart', () => {

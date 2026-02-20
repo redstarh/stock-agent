@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
+import { MarketProvider } from '../../../src/contexts/MarketContext';
 import Layout from '../../../src/components/layout/Layout';
 import type { Notification } from '../../../src/hooks/useWebSocket';
 
@@ -15,11 +16,13 @@ const defaultProps = {
 describe('Layout', () => {
   it('renders children in main content area', () => {
     render(
+      <MarketProvider>
       <MemoryRouter>
         <Layout {...defaultProps}>
           <div data-testid="test-content">Test Content</div>
         </Layout>
       </MemoryRouter>
+      </MarketProvider>
     );
 
     expect(screen.getByTestId('test-content')).toBeInTheDocument();
@@ -28,11 +31,13 @@ describe('Layout', () => {
 
   it('renders Header component', () => {
     render(
+      <MarketProvider>
       <MemoryRouter>
         <Layout {...defaultProps}>
           <div>Content</div>
         </Layout>
       </MemoryRouter>
+      </MarketProvider>
     );
 
     expect(screen.getByRole('link', { name: 'StockNews' })).toBeInTheDocument();
@@ -41,11 +46,13 @@ describe('Layout', () => {
 
   it('renders Sidebar component', () => {
     render(
+      <MarketProvider>
       <MemoryRouter>
         <Layout {...defaultProps}>
           <div>Content</div>
         </Layout>
       </MemoryRouter>
+      </MarketProvider>
     );
 
     // Check sidebar is present by looking for complementary role
@@ -70,11 +77,13 @@ describe('Layout', () => {
     ];
 
     render(
+      <MarketProvider>
       <MemoryRouter>
         <Layout {...defaultProps} notifications={notifications} unreadCount={1}>
           <div>Content</div>
         </Layout>
       </MemoryRouter>
+      </MarketProvider>
     );
 
     expect(screen.getByText('1')).toBeInTheDocument();
@@ -82,11 +91,13 @@ describe('Layout', () => {
 
   it('wraps content in proper layout structure', () => {
     const { container } = render(
+      <MarketProvider>
       <MemoryRouter>
         <Layout {...defaultProps}>
           <div>Content</div>
         </Layout>
       </MemoryRouter>
+      </MarketProvider>
     );
 
     // Check for main container structure
@@ -97,11 +108,13 @@ describe('Layout', () => {
 
   it('has responsive flex layout', () => {
     const { container } = render(
+      <MarketProvider>
       <MemoryRouter>
         <Layout {...defaultProps}>
           <div>Content</div>
         </Layout>
       </MemoryRouter>
+      </MarketProvider>
     );
 
     const rootDiv = container.firstChild;

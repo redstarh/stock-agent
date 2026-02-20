@@ -20,6 +20,7 @@ class MockNewsEvent:
         stock_name: str | None = "삼성전자",
         theme: str | None = "반도체",
         sentiment: str = "positive",
+        sentiment_score: float = 0.0,
         published_at: datetime | None = None,
     ):
         self.stock_code = stock_code
@@ -28,6 +29,7 @@ class MockNewsEvent:
         self.stock_name = stock_name
         self.theme = theme
         self.sentiment = sentiment
+        self.sentiment_score = sentiment_score
         self.published_at = published_at or datetime.now(timezone.utc)
 
 
@@ -44,6 +46,7 @@ class TestPublishNewsEvent:
             stock_name="삼성전자",
             theme="반도체",
             sentiment="positive",
+            sentiment_score=0.8,
         )
 
         result = publish_news_event(mock_redis, news, score=85.0)
@@ -62,7 +65,7 @@ class TestPublishNewsEvent:
         assert payload["stock_name"] == "삼성전자"
         assert payload["title"] == "삼성전자 급등"
         assert payload["theme"] == "반도체"
-        assert payload["sentiment"] == "positive"
+        assert payload["sentiment"] == 0.8
         assert payload["news_score"] == 85.0
         assert payload["market"] == "KR"
         assert payload["published_at"] is not None
@@ -85,6 +88,7 @@ class TestPublishNewsEvent:
             title="Apple breaks record",
             market="US",
             stock_name="Apple Inc.",
+            sentiment_score=0.5,
         )
 
         result = publish_news_event(mock_redis, news, score=90.0)
@@ -103,6 +107,7 @@ class TestPublishNewsEvent:
             market="KR",
             stock_name=None,
             theme=None,
+            sentiment_score=-0.3,
         )
 
         result = publish_news_event(mock_redis, news, score=82.0)

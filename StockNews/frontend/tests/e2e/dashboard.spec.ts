@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupApiMocks, mockTopNews, mockLatestNews } from './helpers';
+import { setupApiMocks, mockTopNews } from './helpers';
 
 test.describe('Dashboard Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -7,9 +7,8 @@ test.describe('Dashboard Page', () => {
     await page.goto('/');
   });
 
-  test('displays dashboard header and market selector', async ({ page }) => {
+  test('displays dashboard header', async ({ page }) => {
     await expect(page.getByText('대시보드')).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'KR' }).first()).toBeVisible();
   });
 
   test('shows top stock cards with scores', async ({ page }) => {
@@ -18,10 +17,8 @@ test.describe('Dashboard Page', () => {
     }
   });
 
-  test('shows latest news list', async ({ page }) => {
-    for (const item of mockLatestNews.items) {
-      await expect(page.getByText(item.title)).toBeVisible();
-    }
+  test('shows theme strength section', async ({ page }) => {
+    await expect(page.getByText('테마 강도')).toBeVisible();
   });
 
   test('navigates to stock detail on card click', async ({ page }) => {

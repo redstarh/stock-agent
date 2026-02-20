@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import { mockNewsTop, mockNewsLatest, mockNewsScore, mockStockTimeline, mockThemeStrength, mockPrediction } from './data';
+import { mockNewsTop, mockNewsLatest, mockNewsScore, mockStockTimeline, mockThemeStrength, mockPrediction, mockAccuracy, mockDailyResults, mockThemeAccuracy } from './data';
 
 export const handlers = [
   http.get('/api/v1/news/top', ({ request }) => {
@@ -20,5 +20,8 @@ export const handlers = [
     return HttpResponse.json(data);
   }),
   http.get('/api/v1/theme/strength', () => HttpResponse.json(mockThemeStrength())),
+  http.get('/api/v1/verification/accuracy', () => HttpResponse.json(mockAccuracy())),
+  http.get('/api/v1/verification/daily', () => HttpResponse.json(mockDailyResults())),
+  http.get('/api/v1/verification/themes', () => HttpResponse.json(mockThemeAccuracy())),
   http.get('/health', () => HttpResponse.json({ status: 'ok', version: '0.1.0' })),
 ];

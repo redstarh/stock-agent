@@ -109,9 +109,9 @@ export default function NotificationBell({
                       <p className={`text-sm ${!notif.read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
                         {formatNotification(notif)}
                       </p>
-                      {notif.message.data?.stock_code && (
+                      {!!notif.message.data?.stock_code && (
                         <p className="mt-1 text-xs text-gray-500">
-                          {notif.message.data.stock_code} {notif.message.data.stock_name}
+                          {String(notif.message.data.stock_code)} {String(notif.message.data.stock_name ?? '')}
                         </p>
                       )}
                     </div>

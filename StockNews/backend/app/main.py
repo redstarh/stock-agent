@@ -31,9 +31,13 @@ async def lifespan(application: FastAPI):
 
     # Startup: 수집 스케줄러 시작
     from app.collectors.scheduler import create_scheduler
+    from app.collectors.verification_scheduler import register_verification_jobs
+
     scheduler = create_scheduler()
+    register_verification_jobs(scheduler)
     scheduler.start()
     logger.info("News collection scheduler started")
+    logger.info("Verification scheduler jobs registered")
 
     yield
 
