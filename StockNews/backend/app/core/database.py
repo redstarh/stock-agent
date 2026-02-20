@@ -5,16 +5,28 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 
-# Sync engine for MVP (SQLite)
+
+def _get_engine_url(url: str) -> str:
+    """Convert config URL to sync engine URL."""
+    if "sqlite" in url:
+        return url.replace("+aiosqlite", "")
+    if "+asyncpg" in url:
+        return url.replace("+asyncpg", "+psycopg2")
+    return url
+
+
+# Sync engine for MVP (SQLite) and production (PostgreSQL)
 engine = create_engine(
-    settings.database_url.replace("+aiosqlite", ""),
+    _get_engine_url(settings.database_url),
     echo=settings.debug,
+    pool_pre_ping=True,
 )
+
 
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     """SQLite WAL 모드 + busy timeout 설정."""
-    if "sqlite" in settings.database_url:
+    if engine.url.get_backend_name() == "sqlite":
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA busy_timeout=5000")

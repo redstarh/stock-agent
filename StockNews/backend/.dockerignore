@@ -33,10 +33,23 @@ htmlcov/
 *.db
 *.sqlite
 *.sqlite3
+*.db-shm
+*.db-wal
 
 # Logs
 logs/
 *.log
+
+# OMC / Claude
+.omc/
+.claude/
+CLAUDE.md
+
+# Alembic versions backup
+alembic/versions/__pycache__/
+
+# Runtime data
+models/
 
 # Documentation
 docs/

@@ -34,6 +34,14 @@ playwright-report/
 *.md
 !README.md
 
+# OMC / Claude
+.omc/
+.claude/
+CLAUDE.md
+
+# Playwright
+e2e-results/
+
 # Logs
 logs/
 *.log

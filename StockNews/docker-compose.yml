@@ -1,29 +1,39 @@
-version: "3.9"
-
 services:
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8001"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://stocknews:stocknews@db:5432/stocknews
+      - DATABASE_URL=postgresql://stocknews:stocknews@db:5432/stocknews
       - REDIS_URL=redis://redis:6379/0
+      - APP_ENV=production
+      - DEBUG=false
+      - CORS_ORIGINS=["http://localhost","http://localhost:80"]
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"
+      - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
 
   db:
     image: postgres:16-alpine
@@ -40,16 +50,30 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    networks:
+      - app-network
 
   redis:
     image: redis:7-alpine
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
+    volumes:
+      - redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   pgdata:
+  redisdata:
+
+networks:
+  app-network:
+    driver: bridge
