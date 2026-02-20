@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta, timezone
 import pandas as pd
 from sqlalchemy.orm import Session
 
+from app.collectors.market_indicator_collector import MarketIndicatorCollector
 from app.collectors.yfinance_middleware import download_with_retry
 from app.models.news_event import NewsEvent
 from app.models.training import StockTrainingData
@@ -18,6 +19,8 @@ from app.processing.technical_indicators import (
 )
 
 logger = logging.getLogger(__name__)
+
+_market_collector = MarketIndicatorCollector()
 
 
 def _fetch_news_features(
@@ -166,6 +169,9 @@ def build_training_snapshot(
     # 시장 지수
     market_index_change = calc_market_index_change(market, target_date)
 
+    # Tier 1 시장 지표 (market_return, vix_change)
+    market_indicators = _market_collector.fetch_daily_indicators(target_date, market)
+
     record = StockTrainingData(
         prediction_date=target_date,
         stock_code=stock_code,
@@ -193,6 +199,8 @@ def build_training_snapshot(
         bb_position=price_feat.get("bb_position"),
         # 시장 피처
         market_index_change=market_index_change,
+        market_return=market_indicators.get("market_return"),
+        vix_change=market_indicators.get("vix_change"),
         day_of_week=target_date.weekday(),
         # 예측 결과
         predicted_direction=prediction["direction"],
@@ -297,7 +305,7 @@ def export_training_csv(
         "prev_close", "prev_change_pct", "prev_volume",
         "price_change_5d", "volume_change_5d",
         "ma5_ratio", "ma20_ratio", "volatility_5d", "rsi_14", "bb_position",
-        "market_index_change", "day_of_week",
+        "market_index_change", "market_return", "vix_change", "day_of_week",
         "predicted_direction", "predicted_score", "confidence",
         "actual_close", "actual_change_pct", "actual_direction",
         "actual_volume", "is_correct",
@@ -329,6 +337,8 @@ def export_training_csv(
             r.rsi_14 or "",
             r.bb_position or "",
             r.market_index_change or "",
+            r.market_return or "",
+            r.vix_change or "",
             r.day_of_week,
             r.predicted_direction,
             r.predicted_score,

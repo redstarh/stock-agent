@@ -43,6 +43,8 @@ class StockTrainingData(Base):
 
     # === 시장 피처 ===
     market_index_change: Mapped[float | None] = mapped_column(Float, nullable=True)
+    market_return: Mapped[float | None] = mapped_column(Float, nullable=True)
+    vix_change: Mapped[float | None] = mapped_column(Float, nullable=True)
     day_of_week: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # === 예측 결과 ===
