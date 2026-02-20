@@ -401,3 +401,114 @@ async def evaluate_model(
         "market": market,
         **result,
     }
+
+
+@router.get("/monitor")
+@limiter.limit("30/minute")
+async def monitor_models(
+    request: Request,
+    response: Response,
+    market: str = Query("KR", description="KR or US"),
+    min_accuracy: float = Query(0.55, description="Minimum acceptable accuracy"),
+    db: Session = Depends(get_db),
+):
+    """모델 정확도 모니터링 + 자동 롤백 체크."""
+    from app.processing.feature_validator import FeatureValidator
+
+    registry = ModelRegistry()
+
+    # Check accuracy and potentially rollback
+    rollback_result = registry.check_accuracy_and_rollback(
+        market, db, min_accuracy=min_accuracy
+    )
+
+    # Get accuracy history
+    history = registry.get_accuracy_history(market, db, limit=10)
+
+    # Check feature null rates
+    validator = FeatureValidator()
+    null_report = validator.null_rate_report(db, market)
+
+    # Build alerts
+    alerts = []
+
+    if rollback_result["action"] == "rollback":
+        alerts.append({
+            "level": "warning",
+            "type": "accuracy_rollback",
+            "message": rollback_result["reason"],
+        })
+    elif rollback_result["action"] == "no_fallback":
+        alerts.append({
+            "level": "critical",
+            "type": "accuracy_low_no_fallback",
+            "message": rollback_result["reason"],
+        })
+
+    # Check for high null rate features
+    for fname, fdata in null_report.get("features", {}).items():
+        if fdata.get("alert"):
+            alerts.append({
+                "level": "warning",
+                "type": "feature_null_rate",
+                "message": f"Feature '{fname}' null rate {fdata['null_rate']:.1%} exceeds threshold",
+            })
+
+    return {
+        "market": market,
+        "rollback_check": rollback_result,
+        "accuracy_history": history,
+        "null_rate_report": null_report,
+        "alerts": alerts,
+        "alert_count": len(alerts),
+    }
+
+
+@router.get("/features")
+@limiter.limit("60/minute")
+async def get_feature_info(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """피처 Tier 정보 + 현재 샘플 수."""
+    from app.processing.feature_config import REMOVED_FEATURES
+
+    # Count current labeled samples per market
+    sample_counts = {}
+    for market in ["KR", "US"]:
+        count = (
+            db.query(func.count(StockTrainingData.id))
+            .filter(
+                StockTrainingData.market == market,
+                StockTrainingData.actual_direction.isnot(None),
+            )
+            .scalar()
+            or 0
+        )
+        sample_counts[market] = count
+
+    # Build tier info
+    tiers = {}
+    for tier in [1, 2, 3]:
+        features = get_features_for_tier(tier)
+        min_samples = get_min_samples_for_tier(tier)
+
+        tiers[str(tier)] = {
+            "features": features,
+            "feature_count": len(features),
+            "min_samples": min_samples,
+            "status": {
+                market: (
+                    "active" if count >= min_samples
+                    else f"{count}/{min_samples}"
+                )
+                for market, count in sample_counts.items()
+            },
+        }
+
+    return {
+        "tiers": tiers,
+        "removed_features": REMOVED_FEATURES,
+        "current_samples": sample_counts,
+    }

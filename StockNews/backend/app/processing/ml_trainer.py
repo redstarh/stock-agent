@@ -217,3 +217,148 @@ class MLTrainer:
                 )
 
         return pickle.loads(data)
+
+    def shap_feature_importance(self, model, X: pd.DataFrame) -> dict:
+        """SHAP 기반 피처 중요도 분석.
+
+        TreeExplainer for LightGBM/RandomForest.
+        Returns sorted feature importance with SHAP values.
+
+        Returns:
+            {
+                "feature_importances": [{"name": str, "importance": float}, ...],
+                "mean_shap_values": dict[str, float],
+            }
+        """
+        try:
+            import shap
+        except ImportError:
+            raise ImportError("shap is required. Install: pip install shap>=0.43.0")
+
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X)
+
+        # For multi-class, shap_values can be:
+        # - list of arrays (one per class): [(n_samples, n_features), ...]
+        # - single 3D array: (n_samples, n_features, n_classes)
+        if isinstance(shap_values, list):
+            # List format: stack and take mean absolute across classes
+            shap_array = np.stack([np.abs(sv) for sv in shap_values], axis=-1)
+            mean_abs_per_class = np.mean(shap_array, axis=-1)  # Average across classes
+        else:
+            # 3D array format
+            if shap_values.ndim == 3:
+                # (n_samples, n_features, n_classes) -> mean abs across classes
+                mean_abs_per_class = np.mean(np.abs(shap_values), axis=-1)
+            else:
+                # Binary classification: (n_samples, n_features)
+                mean_abs_per_class = np.abs(shap_values)
+
+        # Mean across samples to get feature importance
+        feature_importance = np.mean(mean_abs_per_class, axis=0)
+
+        # Normalize to sum to 1
+        total = feature_importance.sum()
+        if total > 0:
+            feature_importance = feature_importance / total
+
+        result = [
+            {"name": name, "importance": round(float(imp), 4)}
+            for name, imp in zip(self.feature_columns, feature_importance)
+        ]
+        result.sort(key=lambda x: x["importance"], reverse=True)
+
+        mean_shap = {
+            name: round(float(imp), 4)
+            for name, imp in zip(self.feature_columns, feature_importance)
+        }
+
+        return {
+            "feature_importances": result,
+            "mean_shap_values": mean_shap,
+        }
+
+    def tune_hyperparameters(
+        self,
+        X: pd.DataFrame,
+        y: pd.Series,
+        model_type: str = "lightgbm",
+        n_trials: int = 30,
+        n_splits: int = 5,
+        timeout: int = 300,
+    ) -> dict:
+        """Optuna 기반 하이퍼파라미터 최적화.
+
+        TimeSeriesSplit CV로 평가. Random split 사용 금지.
+
+        Args:
+            model_type: "lightgbm" or "random_forest"
+            n_trials: Number of Optuna trials
+            n_splits: TimeSeriesSplit folds
+            timeout: Max seconds for optimization
+
+        Returns:
+            {
+                "best_params": dict,
+                "best_accuracy": float,
+                "best_trial": int,
+                "n_trials_completed": int,
+            }
+        """
+        try:
+            import optuna
+        except ImportError:
+            raise ImportError("optuna is required. Install: pip install optuna>=3.5.0")
+
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+        n_splits = min(n_splits, len(X) // 2)
+        if n_splits < 2:
+            n_splits = 2
+
+        tscv = TimeSeriesSplit(n_splits=n_splits)
+
+        def objective(trial):
+            if model_type == "lightgbm":
+                try:
+                    import lightgbm as lgb
+                except ImportError:
+                    raise ImportError("lightgbm required for tuning")
+
+                params = {
+                    "n_estimators": trial.suggest_int("n_estimators", 50, 300),
+                    "max_depth": trial.suggest_int("max_depth", 3, 10),
+                    "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
+                    "num_leaves": trial.suggest_int("num_leaves", 15, 63),
+                    "min_child_samples": trial.suggest_int("min_child_samples", 5, 50),
+                    "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+                    "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
+                    "random_state": 42,
+                    "verbose": -1,
+                    "n_jobs": -1,
+                }
+                model = lgb.LGBMClassifier(**params)
+            else:
+                params = {
+                    "n_estimators": trial.suggest_int("n_estimators", 50, 300),
+                    "max_depth": trial.suggest_int("max_depth", 3, 15),
+                    "min_samples_split": trial.suggest_int("min_samples_split", 2, 20),
+                    "min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, 10),
+                    "max_features": trial.suggest_categorical("max_features", ["sqrt", "log2", None]),
+                    "random_state": 42,
+                    "n_jobs": -1,
+                }
+                model = RandomForestClassifier(**params)
+
+            scores = cross_val_score(model, X, y, cv=tscv, scoring="accuracy")
+            return float(np.mean(scores))
+
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective, n_trials=n_trials, timeout=timeout)
+
+        return {
+            "best_params": study.best_params,
+            "best_accuracy": round(study.best_value, 4),
+            "best_trial": study.best_trial.number,
+            "n_trials_completed": len(study.trials),
+        }

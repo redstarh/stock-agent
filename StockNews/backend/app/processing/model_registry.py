@@ -160,3 +160,110 @@ class ModelRegistry:
         if market:
             query = query.filter(MLModel.market == market)
         return query.all()
+
+    def check_accuracy_and_rollback(
+        self,
+        market: str,
+        db: Session,
+        min_accuracy: float = 0.55,
+    ) -> dict:
+        """활성 모델 정확도 확인 + 자동 롤백.
+
+        현재 활성 모델의 cv_accuracy가 min_accuracy 미만이면
+        이전 최고 성능 모델로 자동 롤백.
+
+        Returns:
+            {
+                "action": "ok" | "rollback" | "no_active" | "no_fallback",
+                "active_model_id": int | None,
+                "active_accuracy": float | None,
+                "rollback_to_id": int | None,
+                "rollback_accuracy": float | None,
+                "reason": str,
+            }
+        """
+        active = self.get_active(market, db)
+
+        if not active:
+            return {
+                "action": "no_active",
+                "active_model_id": None,
+                "active_accuracy": None,
+                "rollback_to_id": None,
+                "rollback_accuracy": None,
+                "reason": f"No active model for market {market}",
+            }
+
+        if active.cv_accuracy is not None and active.cv_accuracy >= min_accuracy:
+            return {
+                "action": "ok",
+                "active_model_id": active.id,
+                "active_accuracy": active.cv_accuracy,
+                "rollback_to_id": None,
+                "rollback_accuracy": None,
+                "reason": f"Active model accuracy {active.cv_accuracy:.4f} >= {min_accuracy}",
+            }
+
+        # Find best alternative model for this market
+        best_alt = (
+            db.query(MLModel)
+            .filter(
+                MLModel.market == market,
+                MLModel.id != active.id,
+                MLModel.cv_accuracy.isnot(None),
+                MLModel.cv_accuracy >= min_accuracy,
+            )
+            .order_by(MLModel.cv_accuracy.desc())
+            .first()
+        )
+
+        if not best_alt:
+            return {
+                "action": "no_fallback",
+                "active_model_id": active.id,
+                "active_accuracy": active.cv_accuracy,
+                "rollback_to_id": None,
+                "rollback_accuracy": None,
+                "reason": f"Active model accuracy {active.cv_accuracy} < {min_accuracy}, but no better alternative found",
+            }
+
+        # Perform rollback
+        self.activate(best_alt.id, db)
+        logger.warning(
+            "Auto-rollback: model %d (acc=%.4f) -> model %d (acc=%.4f) for market %s",
+            active.id, active.cv_accuracy or 0, best_alt.id, best_alt.cv_accuracy or 0, market,
+        )
+
+        return {
+            "action": "rollback",
+            "active_model_id": active.id,
+            "active_accuracy": active.cv_accuracy,
+            "rollback_to_id": best_alt.id,
+            "rollback_accuracy": best_alt.cv_accuracy,
+            "reason": f"Rolled back from model {active.id} (acc={active.cv_accuracy}) to model {best_alt.id} (acc={best_alt.cv_accuracy})",
+        }
+
+    def get_accuracy_history(self, market: str, db: Session, limit: int = 20) -> list[dict]:
+        """시장별 모델 정확도 히스토리.
+
+        Returns:
+            [{"model_id": int, "model_name": str, "cv_accuracy": float, "is_active": bool, "created_at": str}, ...]
+        """
+        models = (
+            db.query(MLModel)
+            .filter(MLModel.market == market)
+            .order_by(MLModel.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        return [
+            {
+                "model_id": m.id,
+                "model_name": m.model_name,
+                "cv_accuracy": m.cv_accuracy,
+                "is_active": m.is_active,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            }
+            for m in models
+        ]
