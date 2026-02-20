@@ -37,6 +37,11 @@ class TrainingDataItem(BaseModel):
 
     # 시장 피처
     market_index_change: float | None
+    market_return: float | None = None
+    vix_change: float | None = None
+    usd_krw_change: float | None = None
+    has_earnings_disclosure: bool | None = None
+    cross_theme_score: float | None = None
     day_of_week: int
 
     # 예측

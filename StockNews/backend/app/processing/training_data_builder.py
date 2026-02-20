@@ -12,6 +12,7 @@ from app.collectors.market_indicator_collector import MarketIndicatorCollector
 from app.collectors.yfinance_middleware import download_with_retry
 from app.models.news_event import NewsEvent
 from app.models.training import StockTrainingData
+from app.processing.cross_theme_scorer import calc_cross_theme_score
 from app.processing.price_fetcher import format_ticker
 from app.processing.technical_indicators import (
     calc_market_index_change,
@@ -172,6 +173,11 @@ def build_training_snapshot(
     # Tier 1 시장 지표 (market_return, vix_change)
     market_indicators = _market_collector.fetch_daily_indicators(target_date, market)
 
+    # Tier 2: cross-theme score
+    cross_theme_score = calc_cross_theme_score(
+        db, news_feat["theme"], stock_code, market, target_date
+    )
+
     record = StockTrainingData(
         prediction_date=target_date,
         stock_code=stock_code,
@@ -201,6 +207,10 @@ def build_training_snapshot(
         market_index_change=market_index_change,
         market_return=market_indicators.get("market_return"),
         vix_change=market_indicators.get("vix_change"),
+        # Tier 2 시장/공시 피처
+        usd_krw_change=market_indicators.get("usd_krw_change"),
+        has_earnings_disclosure=bool(news_feat["disclosure_ratio"] > 0),
+        cross_theme_score=cross_theme_score,
         day_of_week=target_date.weekday(),
         # 예측 결과
         predicted_direction=prediction["direction"],
@@ -305,7 +315,9 @@ def export_training_csv(
         "prev_close", "prev_change_pct", "prev_volume",
         "price_change_5d", "volume_change_5d",
         "ma5_ratio", "ma20_ratio", "volatility_5d", "rsi_14", "bb_position",
-        "market_index_change", "market_return", "vix_change", "day_of_week",
+        "market_index_change", "market_return", "vix_change",
+        "usd_krw_change", "has_earnings_disclosure", "cross_theme_score",
+        "day_of_week",
         "predicted_direction", "predicted_score", "confidence",
         "actual_close", "actual_change_pct", "actual_direction",
         "actual_volume", "is_correct",
@@ -339,6 +351,9 @@ def export_training_csv(
             r.market_index_change or "",
             r.market_return or "",
             r.vix_change or "",
+            r.usd_krw_change or "",
+            r.has_earnings_disclosure if r.has_earnings_disclosure is not None else "",
+            r.cross_theme_score or "",
             r.day_of_week,
             r.predicted_direction,
             r.predicted_score,

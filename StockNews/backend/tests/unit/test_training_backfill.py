@@ -69,6 +69,10 @@ def test_backfill_creates_training_data(db_session, monkeypatch):
 
     monkeypatch.setattr("yfinance.download", mock_download)
     monkeypatch.setattr("app.processing.technical_indicators.yf.download", mock_download)
+    monkeypatch.setattr(
+        "app.processing.training_data_builder.calc_cross_theme_score",
+        lambda db, theme, stock_code, market, target_date: 0.0,
+    )
 
     # Run backfill
     result = backfill_training_data(db_session, market="KR", days_back=30)
@@ -167,6 +171,10 @@ def test_backfill_dry_run(db_session, monkeypatch):
         return pd.DataFrame()
 
     monkeypatch.setattr("yfinance.download", mock_download)
+    monkeypatch.setattr(
+        "app.processing.training_data_builder.calc_cross_theme_score",
+        lambda db, theme, stock_code, market, target_date: 0.0,
+    )
 
     # Run backfill with dry_run=True
     result = backfill_training_data(db_session, market="KR", days_back=30, dry_run=True)
@@ -207,6 +215,10 @@ def test_backfill_updates_actuals(db_session, monkeypatch):
 
     monkeypatch.setattr("yfinance.download", mock_download)
     monkeypatch.setattr("app.processing.technical_indicators.yf.download", mock_download)
+    monkeypatch.setattr(
+        "app.processing.training_data_builder.calc_cross_theme_score",
+        lambda db, theme, stock_code, market, target_date: 0.0,
+    )
 
     # Run backfill
     result = backfill_training_data(db_session, market="KR", days_back=30)
@@ -254,6 +266,10 @@ def test_backfill_multiple_dates(db_session, monkeypatch):
         return pd.DataFrame()
 
     monkeypatch.setattr("yfinance.download", mock_download)
+    monkeypatch.setattr(
+        "app.processing.training_data_builder.calc_cross_theme_score",
+        lambda db, theme, stock_code, market, target_date: 0.0,
+    )
 
     # Run backfill
     result = backfill_training_data(db_session, market="KR", days_back=30)
@@ -294,6 +310,10 @@ def test_backfill_handles_errors(db_session, monkeypatch):
         return pd.DataFrame()
 
     monkeypatch.setattr("yfinance.download", mock_download)
+    monkeypatch.setattr(
+        "app.processing.training_data_builder.calc_cross_theme_score",
+        lambda db, theme, stock_code, market, target_date: 0.0,
+    )
 
     # Mock build_training_snapshot to fail for one stock
     original_build = None
@@ -352,6 +372,10 @@ def test_backfill_market_filter(db_session, monkeypatch):
         return pd.DataFrame()
 
     monkeypatch.setattr("yfinance.download", mock_download)
+    monkeypatch.setattr(
+        "app.processing.training_data_builder.calc_cross_theme_score",
+        lambda db, theme, stock_code, market, target_date: 0.0,
+    )
 
     # Run backfill for KR market only
     result = backfill_training_data(db_session, market="KR", days_back=30)

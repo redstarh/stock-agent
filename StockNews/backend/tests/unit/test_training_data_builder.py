@@ -57,6 +57,10 @@ def test_build_training_snapshot_basic(db_session, monkeypatch):
         "app.processing.technical_indicators.yf.download",
         mock_download,
     )
+    monkeypatch.setattr(
+        "app.processing.training_data_builder.calc_cross_theme_score",
+        lambda db, theme, stock_code, market, target_date: 0.0,
+    )
 
     record = build_training_snapshot(
         db=db_session,
@@ -92,6 +96,10 @@ def test_build_training_snapshot_no_news(db_session, monkeypatch):
     monkeypatch.setattr(
         "app.processing.technical_indicators.yf.download",
         mock_download,
+    )
+    monkeypatch.setattr(
+        "app.processing.training_data_builder.calc_cross_theme_score",
+        lambda db, theme, stock_code, market, target_date: 0.0,
     )
 
     record = build_training_snapshot(
