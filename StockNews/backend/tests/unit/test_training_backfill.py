@@ -67,7 +67,7 @@ def test_backfill_creates_training_data(db_session, monkeypatch):
     def mock_download(*args, **kwargs):
         return pd.DataFrame()
 
-    monkeypatch.setattr("app.processing.training_data_builder.yf.download", mock_download)
+    monkeypatch.setattr("yfinance.download", mock_download)
     monkeypatch.setattr("app.processing.technical_indicators.yf.download", mock_download)
 
     # Run backfill
@@ -132,7 +132,7 @@ def test_backfill_skips_existing(db_session, monkeypatch):
     def mock_download(*args, **kwargs):
         return pd.DataFrame()
 
-    monkeypatch.setattr("app.processing.training_data_builder.yf.download", mock_download)
+    monkeypatch.setattr("yfinance.download", mock_download)
 
     # Run backfill
     result = backfill_training_data(db_session, market="KR", days_back=30)
@@ -166,7 +166,7 @@ def test_backfill_dry_run(db_session, monkeypatch):
     def mock_download(*args, **kwargs):
         return pd.DataFrame()
 
-    monkeypatch.setattr("app.processing.training_data_builder.yf.download", mock_download)
+    monkeypatch.setattr("yfinance.download", mock_download)
 
     # Run backfill with dry_run=True
     result = backfill_training_data(db_session, market="KR", days_back=30, dry_run=True)
@@ -205,7 +205,7 @@ def test_backfill_updates_actuals(db_session, monkeypatch):
     def mock_download(*args, **kwargs):
         return pd.DataFrame()
 
-    monkeypatch.setattr("app.processing.training_data_builder.yf.download", mock_download)
+    monkeypatch.setattr("yfinance.download", mock_download)
     monkeypatch.setattr("app.processing.technical_indicators.yf.download", mock_download)
 
     # Run backfill
@@ -253,7 +253,7 @@ def test_backfill_multiple_dates(db_session, monkeypatch):
     def mock_download(*args, **kwargs):
         return pd.DataFrame()
 
-    monkeypatch.setattr("app.processing.training_data_builder.yf.download", mock_download)
+    monkeypatch.setattr("yfinance.download", mock_download)
 
     # Run backfill
     result = backfill_training_data(db_session, market="KR", days_back=30)
@@ -293,7 +293,7 @@ def test_backfill_handles_errors(db_session, monkeypatch):
     def mock_download(*args, **kwargs):
         return pd.DataFrame()
 
-    monkeypatch.setattr("app.processing.training_data_builder.yf.download", mock_download)
+    monkeypatch.setattr("yfinance.download", mock_download)
 
     # Mock build_training_snapshot to fail for one stock
     original_build = None
@@ -351,7 +351,7 @@ def test_backfill_market_filter(db_session, monkeypatch):
     def mock_download(*args, **kwargs):
         return pd.DataFrame()
 
-    monkeypatch.setattr("app.processing.training_data_builder.yf.download", mock_download)
+    monkeypatch.setattr("yfinance.download", mock_download)
 
     # Run backfill for KR market only
     result = backfill_training_data(db_session, market="KR", days_back=30)

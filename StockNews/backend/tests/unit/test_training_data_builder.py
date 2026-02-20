@@ -52,7 +52,7 @@ def test_build_training_snapshot_basic(db_session, monkeypatch):
     def mock_download(*args, **kwargs):
         return mock_df
 
-    monkeypatch.setattr("app.processing.training_data_builder.yf.download", mock_download)
+    monkeypatch.setattr("yfinance.download", mock_download)
     monkeypatch.setattr(
         "app.processing.technical_indicators.yf.download",
         mock_download,
@@ -88,7 +88,7 @@ def test_build_training_snapshot_no_news(db_session, monkeypatch):
     def mock_download(*args, **kwargs):
         return pd.DataFrame()
 
-    monkeypatch.setattr("app.processing.training_data_builder.yf.download", mock_download)
+    monkeypatch.setattr("yfinance.download", mock_download)
     monkeypatch.setattr(
         "app.processing.technical_indicators.yf.download",
         mock_download,

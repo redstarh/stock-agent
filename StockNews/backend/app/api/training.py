@@ -197,3 +197,26 @@ async def get_training_stats(
         labeled_records=labeled_all,
         markets=markets_data,
     )
+
+
+@router.post("/backfill")
+@limiter.limit("5/minute")
+async def trigger_backfill(
+    request: Request,
+    response: Response,
+    market: str = Query("KR", description="KR or US"),
+    days_back: int = Query(30, ge=1, le=90, description="Days to backfill"),
+    dry_run: bool = Query(False, description="Preview without creating records"),
+    db: Session = Depends(get_db),
+):
+    """Historical training data backfill 실행."""
+    from app.processing.training_backfill import backfill_training_data
+
+    result = backfill_training_data(db, market=market, days_back=days_back, dry_run=dry_run)
+
+    return {
+        "status": "dry_run" if dry_run else "completed",
+        "market": market,
+        "days_back": days_back,
+        **result,
+    }

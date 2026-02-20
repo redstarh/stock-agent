@@ -20,6 +20,9 @@ FEATURE_BOUNDS: dict[str, tuple[float, float]] = {
     "volatility_5d": (0, 50),
     "ma5_ratio": (0.5, 2.0),
     "disclosure_ratio": (0, 1),
+    "prev_change_pct": (-30, 30),
+    "price_change_5d": (-50, 50),
+    "volume_change_5d": (-100, 1000),
 }
 
 # Default imputation values (used when feature is None)
@@ -137,6 +140,8 @@ class FeatureValidator:
             "price_change_5d": StockTrainingData.price_change_5d,
             "volume_change_5d": StockTrainingData.volume_change_5d,
             "market_index_change": StockTrainingData.market_index_change,
+            "news_score": StockTrainingData.news_score,
+            "sentiment_score": StockTrainingData.sentiment_score,
         }
 
         report = {}

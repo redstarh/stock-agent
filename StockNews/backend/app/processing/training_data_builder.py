@@ -6,9 +6,9 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 
 import pandas as pd
-import yfinance as yf
 from sqlalchemy.orm import Session
 
+from app.collectors.yfinance_middleware import download_with_retry
 from app.models.news_event import NewsEvent
 from app.models.training import StockTrainingData
 from app.processing.price_fetcher import format_ticker
@@ -99,7 +99,7 @@ def _fetch_price_features(
     end = target_date + timedelta(days=1)
 
     try:
-        df = yf.download(ticker, start=str(start), end=str(end), progress=False)
+        df = download_with_retry(ticker, start=str(start), end=str(end))
         if df.empty or len(df) < 2:
             return {}
 

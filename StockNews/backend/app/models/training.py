@@ -66,6 +66,7 @@ class StockTrainingData(Base):
     __table_args__ = (
         Index("idx_training_date_stock", "prediction_date", "stock_code", unique=True),
         Index("idx_training_market_date", "market", "prediction_date"),
+        Index("idx_training_labels", "market", "prediction_date", "actual_direction"),
     )
 
     def __repr__(self) -> str:
