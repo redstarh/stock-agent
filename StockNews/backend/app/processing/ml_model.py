@@ -1,5 +1,6 @@
 """Enhanced ML model with price + news features."""
 
+import logging
 import os
 from pathlib import Path
 from typing import Optional
@@ -8,11 +9,12 @@ from collections import Counter
 
 import joblib
 import numpy as np
-from loguru import logger
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.collectors.price_collector import PriceCollector
 from app.processing.feature_engineer import build_feature_vector, prepare_training_data

@@ -1,12 +1,14 @@
 """주가 데이터 수집 모듈 (yfinance 기반)."""
 
+import logging
 import time
 from datetime import datetime, timedelta
 from typing import Optional
 
 import pandas as pd
 import yfinance as yf
-from loguru import logger
+
+logger = logging.getLogger(__name__)
 
 
 class PriceCollector:

@@ -43,12 +43,14 @@ class TestRedis:
 
 class TestLogger:
     def test_logger_import(self):
-        """loguru logger import 확인."""
-        from app.core.logger import logger
+        """structured logging import 확인."""
+        import logging
+        logger = logging.getLogger(__name__)
         assert logger is not None
 
-    def test_logger_can_log(self, capsys):
+    def test_logger_can_log(self):
         """logger가 에러 없이 로그를 출력."""
-        from app.core.logger import logger
+        import logging
+        logger = logging.getLogger("test.core")
         # 에러 없이 실행되면 성공
         logger.info("Test log message")

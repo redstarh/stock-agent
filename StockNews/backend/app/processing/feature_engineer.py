@@ -2,11 +2,13 @@
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import logging
 
 import pandas as pd
-from loguru import logger
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.collectors.price_collector import PriceCollector, fetch_recent_price_change
 from app.models.news_event import NewsEvent
