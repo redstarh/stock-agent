@@ -8,9 +8,14 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "sqlite+aiosqlite:///./stocknews.db"
+    database_ssl_mode: str = ""  # "", "require", "verify-ca", "verify-full"
+    database_ssl_ca: str = ""  # Path to CA certificate
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
+    redis_password: str = ""
+    redis_ssl: bool = False
+    redis_ssl_ca: str = ""  # Path to CA certificate
 
     # OpenAI
     openai_api_key: str = ""
@@ -46,6 +51,7 @@ class Settings(BaseSettings):
 
     # Authentication
     api_key: str = "dev-api-key-change-in-production"
+    api_key_next: str = ""  # Next key for rotation (both current and next are valid)
     require_auth: bool = False
 
     # Monitoring

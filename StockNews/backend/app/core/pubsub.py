@@ -4,6 +4,10 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
+from pydantic import ValidationError
+
+from app.schemas.pubsub import BreakingNewsMessage, Market, validate_message
+
 if TYPE_CHECKING:
     from app.models.news_event import NewsEvent
 
@@ -51,17 +55,23 @@ def publish_breaking_news(
         발행 성공 시 True
     """
     channel = get_channel_name(market)
-    payload = json.dumps({
-        "type": "breaking_news",
-        "stock_code": stock_code,
-        "stock_name": stock_name,
-        "title": title,
-        "theme": theme,
-        "sentiment": sentiment_score,
-        "news_score": score,
-        "market": market,
-        "published_at": published_at,
-    }, ensure_ascii=False)
+
+    # Validate payload with Pydantic model
+    try:
+        message = BreakingNewsMessage(
+            stock_code=stock_code,
+            stock_name=stock_name,
+            title=title,
+            theme=theme,
+            sentiment=sentiment_score,
+            news_score=score,
+            market=Market(market),
+            published_at=published_at,
+        )
+        payload = message.model_dump_json()
+    except ValidationError as e:
+        logger.error("Invalid message schema: %s", e)
+        return False
 
     try:
         redis_client.publish(channel, payload)
@@ -117,12 +127,18 @@ async def subscribe_and_broadcast(redis_client, broadcast_callback):
         async for message in pubsub.listen():
             if message and message["type"] == "message":
                 try:
-                    data = json.loads(message["data"])
-                    await broadcast_callback(data)
+                    raw_data = json.loads(message["data"])
+                    validated = validate_message(raw_data)
+                    if validated:
+                        await broadcast_callback(validated.model_dump())
+                    else:
+                        logger.warning("Unknown message type: %s", raw_data.get("type"))
+                except ValidationError as e:
+                    logger.warning("Invalid message schema: %s", e)
                 except json.JSONDecodeError:
-                    logger.warning(f"Invalid JSON from Redis: {message['data']}")
+                    logger.warning("Invalid JSON from Redis: %s", message["data"])
                 except Exception as e:
-                    logger.error(f"Broadcast callback error: {e}")
+                    logger.error("Broadcast callback error: %s", e)
 
     except Exception as e:
         logger.error(f"Redis subscription error: {e}")

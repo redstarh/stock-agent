@@ -119,3 +119,48 @@ class TestPublicEndpointsNoAuth:
         """OpenAPI 스키마는 항상 인증 불필요."""
         response = client.get("/openapi.json")
         assert response.status_code == 200
+
+
+class TestApiKeyRotation:
+    """API Key 회전 테스트."""
+
+    @pytest.fixture(autouse=True)
+    def setup_rotation(self, monkeypatch):
+        """회전 키 설정."""
+        monkeypatch.setattr(settings, "require_auth", True)
+        monkeypatch.setattr(settings, "app_env", "production")
+        monkeypatch.setattr(settings, "api_key", "current-key-12345")
+        monkeypatch.setattr(settings, "api_key_next", "next-key-67890")
+
+    def test_current_key_accepted(self):
+        """현재 키로 요청 성공."""
+        response = client.get(
+            "/api/v1/news/latest?market=KR",
+            headers={"X-API-Key": "current-key-12345"},
+        )
+        assert response.status_code not in [401, 403]
+
+    def test_next_key_accepted(self):
+        """회전 키로 요청 성공."""
+        response = client.get(
+            "/api/v1/news/latest?market=KR",
+            headers={"X-API-Key": "next-key-67890"},
+        )
+        assert response.status_code not in [401, 403]
+
+    def test_old_key_rejected(self):
+        """무효한 키 거부."""
+        response = client.get(
+            "/api/v1/news/latest?market=KR",
+            headers={"X-API-Key": "old-expired-key"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_rotation_without_next_key(self, monkeypatch):
+        """next 키 미설정 시 current 키만 유효."""
+        monkeypatch.setattr(settings, "api_key_next", "")
+        response = client.get(
+            "/api/v1/news/latest?market=KR",
+            headers={"X-API-Key": "next-key-67890"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN

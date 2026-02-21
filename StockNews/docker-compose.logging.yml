@@ -1,0 +1,34 @@
+# Optional ELK stack log aggregation override.
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.logging.yml up -d
+
+services:
+  backend:
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "localhost:24224"
+        tag: "stocknews.backend"
+        fluentd-async: "true"
+
+  frontend:
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "localhost:24224"
+        tag: "stocknews.frontend"
+        fluentd-async: "true"
+
+  fluentd:
+    image: fluent/fluentd:v1.16-1
+    volumes:
+      - ./monitoring/fluentd/fluent.conf:/fluentd/etc/fluent.conf
+      - fluentd-data:/fluentd/log
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  fluentd-data:

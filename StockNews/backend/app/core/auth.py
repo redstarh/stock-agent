@@ -1,9 +1,13 @@
 """API 인증 미들웨어 및 종속성."""
 
+import logging
+
 from fastapi import HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # API Key header scheme
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -55,10 +59,19 @@ async def verify_api_key(
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
-    if api_key != settings.api_key:
+    # Check against current and next (rotation) keys
+    valid_keys = {settings.api_key}
+    if settings.api_key_next:
+        valid_keys.add(settings.api_key_next)
+
+    if api_key not in valid_keys:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid API Key",
         )
+
+    # Audit log: track key usage for rotation monitoring
+    key_label = "current" if api_key == settings.api_key else "next"
+    logger.info("API request authenticated with %s key: %s", key_label, request.url.path)
 
     return api_key
