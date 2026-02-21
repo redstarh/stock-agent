@@ -58,3 +58,10 @@ frontend/blob-report/
 
 # Build artifacts
 *.pyc
+
+# SQLite WAL files
+*.db-shm
+*.db-wal
+
+# ML model files (large binary)
+backend/models/*.pkl
