@@ -12,8 +12,9 @@ from slowapi.errors import RateLimitExceeded
 import app.models  # noqa: F401 — register all models with Base.metadata
 from app.api.health import router as health_router
 from app.api.prediction import router as prediction_router
-from app.api.router import api_v1_router
+from app.api.router import api_v1_router, api_v2_router
 from app.api.summary import router as summary_router
+from app.api.versions import router as versions_router
 from app.api.websocket import router as ws_router
 from app.core.config import settings
 from app.core.database import engine
@@ -21,6 +22,7 @@ from app.core.limiter import limiter
 from app.core.logging import setup_logging
 from app.core.middleware import RequestLoggingMiddleware
 from app.core.monitoring import init_sentry, sanitize_exception_message, setup_prometheus
+from app.core.versioning import APIVersionMiddleware
 from app.models.base import Base
 
 logger = logging.getLogger(__name__)
@@ -86,9 +88,14 @@ app.add_middleware(
 # Request logging middleware
 app.add_middleware(RequestLoggingMiddleware)
 
+# API version middleware
+app.add_middleware(APIVersionMiddleware)
+
 # Routers
 app.include_router(health_router)
+app.include_router(versions_router)
 app.include_router(api_v1_router)
+app.include_router(api_v2_router)
 app.include_router(prediction_router)
 app.include_router(summary_router)
 app.include_router(ws_router)

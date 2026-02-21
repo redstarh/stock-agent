@@ -1,4 +1,4 @@
-"""API v1 라우터 — 모든 엔드포인트 통합."""
+"""API 라우터 — v1 및 v2 엔드포인트 통합."""
 
 from fastapi import APIRouter
 
@@ -9,6 +9,7 @@ from app.api.themes import router as themes_router
 from app.api.training import router as training_router
 from app.api.verification import router as verification_router
 
+# API v1 라우터
 api_v1_router = APIRouter(prefix="/api/v1")
 
 api_v1_router.include_router(collect_router)
@@ -17,3 +18,8 @@ api_v1_router.include_router(stocks_router)
 api_v1_router.include_router(themes_router)
 api_v1_router.include_router(training_router)
 api_v1_router.include_router(verification_router)
+
+# API v2 라우터 (v2 패키지에서 임포트)
+from app.api.v2.router import api_v2_router  # noqa: E402
+
+__all__ = ["api_v1_router", "api_v2_router"]
