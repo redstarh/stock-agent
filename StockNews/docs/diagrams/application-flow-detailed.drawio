@@ -1,0 +1,434 @@
+<mxfile host="app.diagrams.net" modified="2026-02-21T10:00:00.000Z" agent="5.0" version="21.6.5">
+  <diagram id="StockNews-Detailed" name="Application Flow Detailed">
+    <mxGraphModel dx="2000" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="StockNews Detailed Application Flow" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="40" y="20" width="400" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Stage 1: Collection -->
+        <mxCell id="stage1-title" value="1. COLLECTION STAGE" style="swimlane;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="40" y="80" width="700" height="260" as="geometry" />
+        </mxCell>
+
+        <mxCell id="scheduler" value="APScheduler&#xa;(BackgroundScheduler)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="stage1-title" vertex="1">
+          <mxGeometry x="30" y="50" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="naver-collector" value="Naver Collector&#xa;&#xa;• BeautifulSoup&#xa;• 1분 주기&#xa;• Retry 3회" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="stage1-title" vertex="1">
+          <mxGeometry x="210" y="50" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dart-collector" value="DART Collector&#xa;&#xa;• REST API&#xa;• 5분 주기&#xa;• is_disclosure=True" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="stage1-title" vertex="1">
+          <mxGeometry x="360" y="50" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="finnhub-collector" value="Finnhub Collector&#xa;&#xa;• httpx async&#xa;• 3분 주기&#xa;• US market" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="stage1-title" vertex="1">
+          <mxGeometry x="530" y="50" width="140" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="naver-api" value="Naver&#xa;Finance" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="stage1-title" vertex="1">
+          <mxGeometry x="220" y="160" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dart-api" value="DART&#xa;OpenAPI" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="stage1-title" vertex="1">
+          <mxGeometry x="380" y="160" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="finnhub-api" value="Finnhub&#xa;API" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="stage1-title" vertex="1">
+          <mxGeometry x="550" y="160" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Stage 2: Processing Pipeline -->
+        <mxCell id="stage2-title" value="2. PROCESSING PIPELINE" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="800" y="80" width="680" height="460" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dedup" value="Deduplication&#xa;&#xa;• URL check&#xa;• Title similarity&#xa;• DB query" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="stage2-title" vertex="1">
+          <mxGeometry x="40" y="50" width="130" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="stock-mapping" value="Stock Code Mapping&#xa;&#xa;KR: Regex + Dict&#xa;• &quot;삼성전자&quot; → 005930&#xa;&#xa;US: Ticker Pattern&#xa;• &quot;AAPL&quot; extraction" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="stage2-title" vertex="1">
+          <mxGeometry x="210" y="50" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="scraping" value="Article Scraping&#xa;&#xa;• asyncio batch&#xa;• 5 concurrent&#xa;• BeautifulSoup&#xa;• 10s timeout" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="stage2-title" vertex="1">
+          <mxGeometry x="410" y="50" width="140" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="llm-analysis" value="Parallel LLM Analysis&#xa;ThreadPoolExecutor (10 workers)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" parent="stage2-title" vertex="1">
+          <mxGeometry x="40" y="180" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sentiment" value="Sentiment Analysis&#xa;&#xa;Model: Claude Sonnet 4&#xa;Input: title + body&#xa;Output: -1.0 ~ 1.0&#xa;Confidence: 0-1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" parent="stage2-title" vertex="1">
+          <mxGeometry x="40" y="250" width="130" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="theme" value="Theme Classification&#xa;&#xa;Model: Claude Opus&#xa;Themes: AI, 반도체,&#xa;2차전지, 바이오&#xa;Fallback: Keywords" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" parent="stage2-title" vertex="1">
+          <mxGeometry x="200" y="250" width="140" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="summary" value="News Summary&#xa;&#xa;Model: Claude Opus&#xa;Input: title + body&#xa;Output: 2-3 문장&#xa;한글 요약" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" parent="stage2-title" vertex="1">
+          <mxGeometry x="370" y="250" width="130" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cross-market" value="Cross-market&#xa;Analysis&#xa;&#xa;US뉴스 → KR영향&#xa;테마 추출" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" parent="stage2-title" vertex="1">
+          <mxGeometry x="530" y="250" width="110" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="progress" value="Progress: 50건마다&#xa;로깅" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;" parent="stage2-title" vertex="1">
+          <mxGeometry x="260" y="380" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Stage 3: Scoring Engine -->
+        <mxCell id="stage3-title" value="3. SCORING ENGINE" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="40" y="380" width="700" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="recency-calc" value="Recency Component&#xa;&#xa;Formula:&#xa;100 × 2^(-hours / 24)&#xa;&#xa;24시간 반감기" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="stage3-title" vertex="1">
+          <mxGeometry x="40" y="50" width="140" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="frequency-calc" value="Frequency Component&#xa;&#xa;Formula:&#xa;min(100, count/50×100)&#xa;&#xa;Max 50건" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="stage3-title" vertex="1">
+          <mxGeometry x="210" y="50" width="140" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sentiment-calc" value="Sentiment Component&#xa;&#xa;Formula:&#xa;(score + 1.0) × 50&#xa;&#xa;-1.0~1.0 → 0~100" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="stage3-title" vertex="1">
+          <mxGeometry x="380" y="50" width="140" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="disclosure-calc" value="Disclosure Bonus&#xa;&#xa;공시: 100&#xa;일반: 0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="stage3-title" vertex="1">
+          <mxGeometry x="550" y="50" width="120" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="final-score" value="Final Score Calculation&#xa;&#xa;Recency × 0.4 + Frequency × 0.3&#xa;+ Sentiment × 0.2 + Disclosure × 0.1&#xa;&#xa;Range: 0 - 100" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" parent="stage3-title" vertex="1">
+          <mxGeometry x="160" y="180" width="360" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Stage 4: Storage -->
+        <mxCell id="stage4-title" value="4. DATA STORAGE" style="swimlane;startSize=30;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="40" y="700" width="700" height="240" as="geometry" />
+        </mxCell>
+
+        <mxCell id="db-postgres" value="PostgreSQL" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="stage4-title" vertex="1">
+          <mxGeometry x="80" y="60" width="100" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table-news" value="news_event&#xa;&#xa;• title, body&#xa;• stock_code&#xa;• sentiment&#xa;• theme&#xa;• news_score" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;" parent="stage4-title" vertex="1">
+          <mxGeometry x="220" y="60" width="140" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table-theme" value="theme_strength&#xa;&#xa;• date&#xa;• theme&#xa;• strength_score&#xa;• news_count" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;" parent="stage4-title" vertex="1">
+          <mxGeometry x="390" y="60" width="140" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-cache" value="Redis Cache&#xa;&#xa;TTL: 1-5분&#xa;&#xa;Keys:&#xa;• score:{market}:{code}&#xa;• timeline:{code}" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="stage4-title" vertex="1">
+          <mxGeometry x="560" y="60" width="120" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Stage 5: Distribution -->
+        <mxCell id="stage5-title" value="5. DISTRIBUTION LAYER" style="swimlane;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="800" y="580" width="680" height="360" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rest-api" value="REST API (FastAPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" parent="stage5-title" vertex="1">
+          <mxGeometry x="40" y="50" width="280" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="endpoint1" value="GET /news/score&#xa;• Stock news score&#xa;• Aggregation" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;" parent="stage5-title" vertex="1">
+          <mxGeometry x="40" y="110" width="130" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="endpoint2" value="GET /news/top&#xa;• Top stocks&#xa;• Market filter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;" parent="stage5-title" vertex="1">
+          <mxGeometry x="190" y="110" width="130" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="endpoint3" value="GET /news/latest&#xa;• Paginated list&#xa;• Filters" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;" parent="stage5-title" vertex="1">
+          <mxGeometry x="40" y="200" width="130" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="endpoint4" value="GET /prediction/*&#xa;• ML predictions&#xa;• Confidence" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;" parent="stage5-title" vertex="1">
+          <mxGeometry x="190" y="200" width="130" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="websocket" value="WebSocket&#xa;/ws/news&#xa;&#xa;• Real-time events&#xa;• Broadcast to all&#xa;• Heartbeat (30s)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="stage5-title" vertex="1">
+          <mxGeometry x="370" y="50" width="140" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pubsub" value="Redis Pub/Sub&#xa;&#xa;Channels:&#xa;• news_breaking_kr&#xa;• news_breaking_us&#xa;&#xa;Threshold: score ≥ 80" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="stage5-title" vertex="1">
+          <mxGeometry x="540" y="50" width="120" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rate-limit" value="Rate Limiting&#xa;60 req/min" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;" parent="stage5-title" vertex="1">
+          <mxGeometry x="370" y="190" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="auth" value="API Key Auth&#xa;X-API-Key header" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;" parent="stage5-title" vertex="1">
+          <mxGeometry x="370" y="250" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Stage 6: ML Pipeline -->
+        <mxCell id="stage6-title" value="6. ML PIPELINE" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="800" y="980" width="680" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="feature-extract" value="Feature Extraction&#xa;&#xa;• news_score_avg&#xa;• sentiment_score_avg&#xa;• news_count&#xa;• disclosure_ratio&#xa;• theme counts" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="stage6-title" vertex="1">
+          <mxGeometry x="40" y="50" width="140" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="model-training" value="Model Training&#xa;&#xa;Algorithm:&#xa;Random Forest /&#xa;LightGBM&#xa;&#xa;CV: TimeSeriesSplit" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="stage6-title" vertex="1">
+          <mxGeometry x="210" y="50" width="140" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prediction" value="Prediction&#xa;&#xa;Direction:&#xa;up / neutral / down&#xa;&#xa;Confidence: 0-1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="stage6-title" vertex="1">
+          <mxGeometry x="380" y="50" width="130" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="verification" value="Verification&#xa;&#xa;Daily check:&#xa;Predicted vs Actual&#xa;&#xa;Accuracy tracking" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="stage6-title" vertex="1">
+          <mxGeometry x="540" y="50" width="120" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ml-accuracy" value="KR: 62-67% accuracy&#xa;US: 58-63% accuracy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;" parent="stage6-title" vertex="1">
+          <mxGeometry x="230" y="200" width="200" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Stage 7: Frontend -->
+        <mxCell id="stage7-title" value="7. FRONTEND INTERACTION" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="40" y="980" width="700" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tanstack-query" value="TanStack Query&#xa;&#xa;• Query caching&#xa;• Auto refetch (60s)&#xa;• Parallel fetching&#xa;• staleTime: 60s" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="stage7-title" vertex="1">
+          <mxGeometry x="40" y="50" width="140" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ws-hook" value="useWebSocket&#xa;&#xa;• Auto reconnect&#xa;• Exponential backoff&#xa;• Heartbeat (30s)&#xa;• Toast notifications" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="stage7-title" vertex="1">
+          <mxGeometry x="210" y="50" width="140" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dashboard" value="Dashboard&#xa;• Top stocks&#xa;• Theme strength&#xa;• Latest news" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" parent="stage7-title" vertex="1">
+          <mxGeometry x="40" y="180" width="140" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="stock-detail" value="Stock Detail&#xa;• Score timeline&#xa;• News list&#xa;• Sentiment pie" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" parent="stage7-title" vertex="1">
+          <mxGeometry x="210" y="180" width="140" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prediction-view" value="Prediction View&#xa;• Direction&#xa;• Confidence&#xa;• Historical" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" parent="stage7-title" vertex="1">
+          <mxGeometry x="380" y="180" width="140" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="recharts" value="Recharts&#xa;&#xa;• Line charts&#xa;• Bar charts&#xa;• Pie charts" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="stage7-title" vertex="1">
+          <mxGeometry x="380" y="50" width="140" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cache-invalidation" value="Cache Invalidation&#xa;on WebSocket message" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" parent="stage7-title" vertex="1">
+          <mxGeometry x="550" y="50" width="130" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Arrows between stages -->
+        <mxCell id="arrow-sched-naver" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" parent="1" source="scheduler" target="naver-collector" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-naver-api" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;dashed=1;" parent="1" source="naver-collector" target="naver-api" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-dart-api" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;dashed=1;" parent="1" source="dart-collector" target="dart-api" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-finnhub-api" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;dashed=1;" parent="1" source="finnhub-collector" target="finnhub-api" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-collect-dedup" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=3;strokeColor=#FF6B35;" parent="1" source="scheduler" target="dedup" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-dedup-stock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=3;strokeColor=#FF6B35;" parent="1" source="dedup" target="stock-mapping" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-stock-scrape" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=3;strokeColor=#FF6B35;" parent="1" source="stock-mapping" target="scraping" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-scrape-llm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=3;strokeColor=#FF6B35;" parent="1" source="scraping" target="llm-analysis" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-llm-sent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.2;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;dashed=1;" parent="1" source="llm-analysis" target="sentiment" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-llm-theme" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.4;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;dashed=1;" parent="1" source="llm-analysis" target="theme" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-llm-summary" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.6;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;dashed=1;" parent="1" source="llm-analysis" target="summary" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-llm-cross" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.8;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;dashed=1;" parent="1" source="llm-analysis" target="cross-market" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-process-score" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=3;strokeColor=#FF6B35;" parent="1" source="sentiment" target="recency-calc" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780" y="610" />
+              <mxPoint x="780" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-rec-final" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;" parent="1" source="recency-calc" target="final-score" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-freq-final" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;" parent="1" source="frequency-calc" target="final-score" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-sent-final" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.6;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;" parent="1" source="sentiment-calc" target="final-score" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-disc-final" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;" parent="1" source="disclosure-calc" target="final-score" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-score-db" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;strokeWidth=3;strokeColor=#FF6B35;" parent="1" source="final-score" target="db-postgres" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-db-dist" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=3;strokeColor=#FF6B35;" parent="1" source="db-postgres" target="rest-api" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-redis-pubsub" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;dashed=1;strokeColor=#F59E42;" parent="1" source="redis-cache" target="pubsub" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="760" y="860" />
+              <mxPoint x="760" y="700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-rest-frontend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=3;strokeColor=#4CAF50;" parent="1" source="rest-api" target="tanstack-query" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780" y="650" />
+              <mxPoint x="780" y="1060" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-ws-frontend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;dashed=1;strokeColor=#2196F3;" parent="1" source="websocket" target="ws-hook" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="760" y="685" />
+              <mxPoint x="760" y="1060" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-db-ml" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#9C27B0;" parent="1" source="db-postgres" target="feature-extract" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="760" y="820" />
+              <mxPoint x="760" y="1090" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-feat-train" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" parent="1" source="feature-extract" target="model-training" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-train-pred" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" parent="1" source="model-training" target="prediction" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-pred-verify" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" parent="1" source="prediction" target="verification" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend-box" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="1540" y="80" width="300" height="260" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-title2" value="Legend" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="1590" y="90" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-main" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#FF6B35;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1560" y="140" as="sourcePoint" />
+            <mxPoint x="1620" y="140" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-main-text" value="Main Data Flow" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="1630" y="130" width="150" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-parallel" value="" style="endArrow=classic;html=1;strokeWidth=2;dashed=1;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1560" y="170" as="sourcePoint" />
+            <mxPoint x="1620" y="170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-parallel-text" value="Parallel Processing" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="1630" y="160" width="150" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-pubsub2" value="" style="endArrow=classic;html=1;strokeWidth=2;dashed=1;strokeColor=#F59E42;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1560" y="200" as="sourcePoint" />
+            <mxPoint x="1620" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-pubsub-text2" value="Redis Pub/Sub" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="1630" y="190" width="150" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-api" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#4CAF50;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1560" y="230" as="sourcePoint" />
+            <mxPoint x="1620" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-api-text" value="REST API Call" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="1630" y="220" width="150" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-ws" value="" style="endArrow=classic;html=1;strokeWidth=2;dashed=1;strokeColor=#2196F3;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1560" y="260" as="sourcePoint" />
+            <mxPoint x="1620" y="260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-ws-text" value="WebSocket" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="1630" y="250" width="150" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-ml" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#9C27B0;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1560" y="290" as="sourcePoint" />
+            <mxPoint x="1620" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-ml-text" value="ML Pipeline" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="1630" y="280" width="150" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
