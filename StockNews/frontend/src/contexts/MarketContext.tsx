@@ -17,6 +17,7 @@ export function MarketProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useMarket(): MarketContextValue {
   const ctx = useContext(MarketContext);
   if (!ctx) throw new Error('useMarket must be used within MarketProvider');

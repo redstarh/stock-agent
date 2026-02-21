@@ -51,7 +51,8 @@ describe('DailyAccuracyChart', () => {
   });
 
   it('handles undefined data gracefully', () => {
-    render(<DailyAccuracyChart data={undefined as any} />);
+    // @ts-expect-error testing undefined input
+    render(<DailyAccuracyChart data={undefined} />);
     expect(screen.getByText('데이터가 없습니다')).toBeInTheDocument();
   });
 

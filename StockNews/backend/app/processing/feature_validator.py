@@ -66,13 +66,12 @@ class FeatureValidator:
 
             if key in FEATURE_BOUNDS:
                 lo, hi = FEATURE_BOUNDS[key]
-                if isinstance(value, (int, float)):
-                    if value < lo or value > hi:
-                        logger.warning(
-                            "Feature %s=%.4f out of bounds [%.1f, %.1f], clipping",
-                            key, value, lo, hi,
-                        )
-                        value = max(lo, min(hi, value))
+                if isinstance(value, (int, float)) and (value < lo or value > hi):
+                    logger.warning(
+                        "Feature %s=%.4f out of bounds [%.1f, %.1f], clipping",
+                        key, value, lo, hi,
+                    )
+                    value = max(lo, min(hi, value))
             result[key] = value
         return result
 

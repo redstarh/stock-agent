@@ -1,6 +1,5 @@
 """AWS Bedrock Claude LLM 클라이언트."""
 
-import json
 import logging
 import re
 from functools import lru_cache

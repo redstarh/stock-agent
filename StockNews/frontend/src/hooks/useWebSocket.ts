@@ -17,6 +17,7 @@ export function useWebSocket(
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const manualClose = useRef(false);
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(() => {
     manualClose.current = false;
@@ -59,14 +60,18 @@ export function useWebSocket(
       setIsConnected(false);
       if (!manualClose.current) {
         // Auto-reconnect after 3 seconds
-        setTimeout(() => connect(), 3000);
+        setTimeout(() => connectRef.current(), 3000);
       }
     };
 
     ws.onerror = () => {
       ws.close();
     };
-  }, [url]);
+  }, [url, onBreakingNews]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   const disconnect = useCallback(() => {
     manualClose.current = true;

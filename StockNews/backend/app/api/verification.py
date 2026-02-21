@@ -1,6 +1,5 @@
 """예측 검증 API 엔드포인트."""
 
-import asyncio
 import logging
 from datetime import date, timedelta
 

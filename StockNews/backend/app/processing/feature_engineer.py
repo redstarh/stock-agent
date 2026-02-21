@@ -1,17 +1,14 @@
 """뉴스 + 주가 데이터 기반 ML 피처 엔지니어링."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
 import logging
+from datetime import UTC, datetime, timedelta
 
-import pandas as pd
-from sqlalchemy import func
 from sqlalchemy.orm import Session
-
-logger = logging.getLogger(__name__)
 
 from app.collectors.price_collector import PriceCollector, fetch_recent_price_change
 from app.models.news_event import NewsEvent
+
+logger = logging.getLogger(__name__)
 
 
 def extract_news_features(
@@ -33,7 +30,7 @@ def extract_news_features(
             "disclosure_ratio": float,
         }
     """
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
     # 전체 기간 뉴스
     news = (
@@ -59,7 +56,7 @@ def extract_news_features(
     avg_sentiment = sum(n.sentiment_score for n in news) / len(news)
 
     # 최근 3일 평균
-    recent_3d = datetime.now(timezone.utc) - timedelta(days=3)
+    recent_3d = datetime.now(UTC) - timedelta(days=3)
     recent_news = [n for n in news if n.created_at >= recent_3d]
     avg_score_3d = (
         sum(n.news_score for n in recent_news) / len(recent_news)
@@ -81,7 +78,7 @@ def extract_news_features(
 
 
 def extract_price_features(
-    stock_code: str, collector: Optional[PriceCollector] = None
+    stock_code: str, collector: PriceCollector | None = None
 ) -> dict[str, float]:
     """주가 피처 추출.
 
@@ -106,7 +103,7 @@ def extract_price_features(
 
 
 def build_feature_vector(
-    stock_code: str, db: Session, collector: Optional[PriceCollector] = None
+    stock_code: str, db: Session, collector: PriceCollector | None = None
 ) -> dict[str, float]:
     """종목의 전체 피처 벡터 생성.
 
@@ -132,7 +129,7 @@ def build_feature_vector(
 def prepare_training_data(
     stock_codes: list[str],
     db: Session,
-    collector: Optional[PriceCollector] = None,
+    collector: PriceCollector | None = None,
 ) -> tuple[list[list[float]], list[str], list[str]]:
     """여러 종목의 학습 데이터 준비.
 

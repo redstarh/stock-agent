@@ -2,8 +2,6 @@
 
 import logging
 import time
-from datetime import datetime, timedelta
-from typing import Optional
 
 import pandas as pd
 import yfinance as yf
@@ -25,7 +23,7 @@ class PriceCollector:
 
     def fetch_price_history(
         self, stock_code: str, period: str = "3mo"
-    ) -> Optional[pd.DataFrame]:
+    ) -> pd.DataFrame | None:
         """주가 히스토리 조회.
 
         Args:
@@ -105,7 +103,7 @@ class PriceCollector:
 
 
 def fetch_recent_price_change(
-    stock_code: str, days: int = 5, collector: Optional[PriceCollector] = None
+    stock_code: str, days: int = 5, collector: PriceCollector | None = None
 ) -> dict[str, float]:
     """최근 N일간 주가 변동률 계산.
 

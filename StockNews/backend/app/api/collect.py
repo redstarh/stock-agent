@@ -1,6 +1,5 @@
 """수동 뉴스 수집 트리거 API."""
 
-import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -90,8 +89,6 @@ async def collect_us_news(
 async def get_collect_status(request: Request, response: Response):
     """스케줄러 상태 조회."""
     try:
-        from app.collectors.scheduler import create_scheduler
-        from apscheduler.schedulers.background import BackgroundScheduler
 
         # Note: This returns the scheduler config, not running state
         # Running state would require access to the app's scheduler instance
@@ -130,8 +127,9 @@ async def analyze_cross_market(
     """기존 US 뉴스의 한국 시장 영향 재분석 (Bedrock Claude)."""
     import json as _json
     from concurrent.futures import ThreadPoolExecutor, as_completed
-    from app.processing.cross_market import analyze_kr_impact
+
     from app.models.news_event import NewsEvent
+    from app.processing.cross_market import analyze_kr_impact
 
     us_news = (
         db.query(NewsEvent)
@@ -176,8 +174,9 @@ async def reclassify_themes(
 ):
     """기존 뉴스 테마를 LLM(Sonnet)으로 재분류 (병렬 처리)."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
-    from app.processing.llm_theme_classifier import classify_theme_llm
+
     from app.models.news_event import NewsEvent
+    from app.processing.llm_theme_classifier import classify_theme_llm
 
     model_id = settings.bedrock_model_id  # Opus (분류 정확도 최고)
 
@@ -198,8 +197,7 @@ async def reclassify_themes(
     reclassified = 0
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(_classify, n) for n in news_list]
-        done = 0
-        for future in as_completed(futures):
+        for done, future in enumerate(as_completed(futures), 1):
             try:
                 news, themes = future.result()
                 new_theme = ",".join(themes) if themes else None
@@ -208,7 +206,6 @@ async def reclassify_themes(
                     reclassified += 1
             except Exception as e:
                 logger.warning("Reclassify failed: %s", e)
-            done += 1
             if done % 50 == 0:
                 logger.info("Reclassify progress: %d/%d", done, len(news_list))
 

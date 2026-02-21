@@ -1,13 +1,13 @@
 """WebSocket 실시간 뉴스 스트림 엔드포인트."""
 
 import asyncio
-import json
+import contextlib
 import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.core.redis import get_redis
 from app.core.pubsub import subscribe_and_broadcast
+from app.core.redis import get_redis
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +65,8 @@ async def _stop_redis_subscriber():
     global _redis_task
     if _redis_task and not _redis_task.done():
         _redis_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await _redis_task
-        except asyncio.CancelledError:
-            pass
         logger.info("Stopped Redis subscriber task")
 
 

@@ -11,6 +11,7 @@ export default function ScoreTimeline({ data, onPointClick }: ScoreTimelineProps
     return <p className="py-8 text-center text-gray-400">타임라인 데이터가 없습니다</p>;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Recharts onClick types are incomplete
   const handleClick = (data: any) => {
     if (data && data.activePayload && data.activePayload[0]) {
       const point = data.activePayload[0].payload as TimelinePoint;

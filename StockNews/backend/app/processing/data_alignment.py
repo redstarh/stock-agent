@@ -1,7 +1,7 @@
 """뉴스↔주가 데이터 정렬 및 피처 엔지니어링."""
 
-from datetime import date, timedelta
 from collections import defaultdict
+from datetime import date, timedelta
 
 
 def _classify_direction(change_pct: float) -> str:

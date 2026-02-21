@@ -2,10 +2,8 @@
 
 import logging
 import os
-from pathlib import Path
-from typing import Optional
-
 from collections import Counter
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -14,10 +12,10 @@ from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sqlalchemy.orm import Session
 
-logger = logging.getLogger(__name__)
-
 from app.collectors.price_collector import PriceCollector
 from app.processing.feature_engineer import build_feature_vector, prepare_training_data
+
+logger = logging.getLogger(__name__)
 
 
 class EnhancedPredictionModel:
@@ -97,7 +95,7 @@ class EnhancedPredictionModel:
         probabilities = self.model.predict_proba(X_scaled)
 
         results = []
-        for pred, proba in zip(predictions, probabilities):
+        for pred, proba in zip(predictions, probabilities, strict=False):
             confidence = float(max(proba))
             results.append({"direction": str(pred), "confidence": round(confidence, 3)})
 
@@ -107,7 +105,7 @@ class EnhancedPredictionModel:
         self,
         stock_code: str,
         db: Session,
-        collector: Optional[PriceCollector] = None,
+        collector: PriceCollector | None = None,
     ) -> dict:
         """종목의 주가 방향 예측.
 
@@ -144,7 +142,7 @@ class EnhancedPredictionModel:
         stock_code: str,
         db: Session,
         test_days: int = 30,
-        collector: Optional[PriceCollector] = None,
+        collector: PriceCollector | None = None,
     ) -> dict:
         """단일 종목 백테스트 (간단한 버전).
 
@@ -235,7 +233,7 @@ class EnhancedPredictionModel:
 def train_model_from_db(
     stock_codes: list[str],
     db: Session,
-    collector: Optional[PriceCollector] = None,
+    collector: PriceCollector | None = None,
 ) -> tuple[EnhancedPredictionModel, dict]:
     """DB에서 데이터를 가져와 모델 학습.
 

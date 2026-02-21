@@ -2,11 +2,12 @@
 
 import logging
 from datetime import date, timedelta
+
 from sqlalchemy.orm import Session
 
 from app.models.training import StockTrainingData
 from app.models.verification import DailyPredictionResult
-from app.processing.training_data_builder import build_training_snapshot, update_training_actuals
+from app.processing.training_data_builder import build_training_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -108,13 +109,6 @@ def backfill_training_data(
 
                 # 5. If actual prices exist in DailyPredictionResult, update actuals
                 if result.actual_close_price is not None and result.actual_change_pct is not None:
-                    price_data = {
-                        result.stock_code: {
-                            "current_close": result.actual_close_price,
-                            "change_pct": result.actual_change_pct,
-                            "volume": result.actual_volume,
-                        }
-                    }
 
                     # Update the training record with actuals
                     training_record.actual_close = result.actual_close_price

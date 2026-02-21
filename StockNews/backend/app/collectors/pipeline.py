@@ -1,9 +1,10 @@
 """뉴스 수집 파이프라인 — 수집 → 전처리 → 분석 → 저장 → 발행."""
 
+import contextlib
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -76,8 +77,8 @@ def _analyze_single(title: str, body: str | None, market: str = "KR") -> dict:
 
     # 테마 분류 (LLM 기반, Opus 모델 — 키워드 fallback)
     try:
-        from app.processing.llm_theme_classifier import classify_theme_llm
         from app.core.config import settings
+        from app.processing.llm_theme_classifier import classify_theme_llm
         themes = classify_theme_llm(title, body, model_id=settings.bedrock_model_id)
     except Exception as e:
         logger.warning("LLM theme failed, keyword fallback: %s", e)
@@ -156,7 +157,7 @@ async def process_collected_items(
             except (ValueError, TypeError):
                 published_at = None
         if published_at is None:
-            published_at = datetime.now(timezone.utc)
+            published_at = datetime.now(UTC)
 
         stock_code = _map_stock_code(item)
         stock_name = item.get("stock_name", "")
@@ -191,8 +192,7 @@ async def process_collected_items(
             future = executor.submit(_analyze_single, p["title"], p["body"], market)
             future_to_idx[future] = idx
 
-        done_count = 0
-        for future in as_completed(future_to_idx):
+        for done_count, future in enumerate(as_completed(future_to_idx), 1):
             idx = future_to_idx[future]
             try:
                 analysis_results[idx] = future.result()
@@ -205,7 +205,6 @@ async def process_collected_items(
                     "summary": "",
                     "kr_impact_themes": [],
                 }
-            done_count += 1
             if done_count % 50 == 0:
                 logger.info("LLM progress: %d/%d", done_count, len(prepared))
 
@@ -215,7 +214,7 @@ async def process_collected_items(
     redis_client = _get_redis_client()
     saved_count = 0
 
-    for p, analysis in zip(prepared, analysis_results):
+    for p, analysis in zip(prepared, analysis_results, strict=False):
         try:
             sentiment = analysis["sentiment"]
             sentiment_score = analysis["sentiment_score"]
@@ -264,9 +263,7 @@ async def process_collected_items(
     logger.info("Pipeline complete: %d/%d items saved", saved_count, len(unique_items))
 
     if redis_client:
-        try:
+        with contextlib.suppress(Exception):
             redis_client.close()
-        except Exception:
-            pass
 
     return saved_count

@@ -6,7 +6,7 @@
 """
 
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # 가중치
 W_RECENCY = 0.4
@@ -30,13 +30,13 @@ def calc_recency(
     지수 감쇠 모델: score = 100 * 2^(-hours / half_life)
     """
     if reference is None:
-        reference = datetime.now(timezone.utc)
+        reference = datetime.now(UTC)
 
     # timezone-aware 변환
     if published_at.tzinfo is None:
-        published_at = published_at.replace(tzinfo=timezone.utc)
+        published_at = published_at.replace(tzinfo=UTC)
     if reference.tzinfo is None:
-        reference = reference.replace(tzinfo=timezone.utc)
+        reference = reference.replace(tzinfo=UTC)
 
     delta_hours = (reference - published_at).total_seconds() / 3600.0
 

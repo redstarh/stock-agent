@@ -12,9 +12,8 @@ logger = logging.getLogger(__name__)
 
 def format_ticker(stock_code: str, market: str) -> str:
     """Format stock code to yfinance ticker."""
-    if market == "KR":
-        if not stock_code.endswith((".KS", ".KQ")):
-            return f"{stock_code}.KS"
+    if market == "KR" and not stock_code.endswith((".KS", ".KQ")):
+        return f"{stock_code}.KS"
     return stock_code
 
 
@@ -54,7 +53,7 @@ async def fetch_prices_batch(
         return {code: None for code in stock_codes}
 
     results = {}
-    for code, ticker in zip(stock_codes, tickers):
+    for code, ticker in zip(stock_codes, tickers, strict=False):
         try:
             if len(tickers) == 1:
                 stock_df = df

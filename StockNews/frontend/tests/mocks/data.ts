@@ -68,7 +68,8 @@ export const mockNewsScore = () => ({
   news_count: 12,
 });
 
-export const mockStockTimeline = (_code: string) => [
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const mockStockTimeline = (_code?: string) => [
   { date: '2024-01-09', score: 60.2 },
   { date: '2024-01-10', score: 65.1 },
   { date: '2024-01-11', score: 70.3 },

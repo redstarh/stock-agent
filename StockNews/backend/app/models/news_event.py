@@ -1,15 +1,15 @@
 """NewsEvent SQLAlchemy 모델."""
 
-from datetime import datetime, timezone
-from enum import Enum as PyEnum
+from datetime import UTC, datetime
+from enum import StrEnum
 
-from sqlalchemy import DateTime, Float, Index, Integer, String, Boolean
+from sqlalchemy import Boolean, DateTime, Float, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
 
 
-class SentimentEnum(str, PyEnum):
+class SentimentEnum(StrEnum):
     """감성 분석 결과 Enum."""
 
     positive = "positive"
@@ -45,7 +45,7 @@ class NewsEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
 
     __table_args__ = (

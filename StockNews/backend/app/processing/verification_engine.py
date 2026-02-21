@@ -1,7 +1,7 @@
 """예측 검증 엔진 — 예측 vs 실제 주가 비교."""
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -105,7 +105,7 @@ async def run_verification(
     db: Session, target_date: date, market: str
 ) -> VerificationRunLog:
     """Main verification workflow."""
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.now(UTC)
     run_log = VerificationRunLog(
         run_date=target_date, market=market, status="running"
     )
@@ -118,7 +118,7 @@ async def run_verification(
         if not stocks:
             run_log.status = "success"
             run_log.stocks_verified = 0
-            run_log.duration_seconds = (datetime.now(timezone.utc) - start_time).total_seconds()
+            run_log.duration_seconds = (datetime.now(UTC) - start_time).total_seconds()
             db.commit()
             return run_log
 
@@ -202,7 +202,7 @@ async def run_verification(
             logger.warning("Failed to update training actuals: %s", e)
 
         # Step 5: Update run log
-        duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+        duration = (datetime.now(UTC) - start_time).total_seconds()
         run_log.status = "success" if failed == 0 else "partial"
         run_log.stocks_verified = verified
         run_log.stocks_failed = failed
@@ -213,6 +213,6 @@ async def run_verification(
     except Exception as e:
         run_log.status = "failed"
         run_log.error_details = str(e)
-        run_log.duration_seconds = (datetime.now(timezone.utc) - start_time).total_seconds()
+        run_log.duration_seconds = (datetime.now(UTC) - start_time).total_seconds()
         db.commit()
         raise

@@ -1,7 +1,7 @@
 """DART 공시 API 수집기."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -19,7 +19,7 @@ class DartCollector:
     async def collect(self, begin_date: str | None = None) -> list[dict]:
         """최근 공시 목록 수집."""
         if not begin_date:
-            begin_date = datetime.now(timezone.utc).strftime("%Y%m%d")
+            begin_date = datetime.now(UTC).strftime("%Y%m%d")
 
         params = {
             "crtfc_key": self.api_key,
@@ -65,6 +65,6 @@ def _parse_dart_date(date_str: str) -> datetime | None:
     if not date_str or len(date_str) != 8:
         return None
     try:
-        return datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=timezone.utc)
+        return datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=UTC)
     except ValueError:
         return None

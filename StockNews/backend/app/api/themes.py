@@ -4,12 +4,11 @@ import json
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Request, Response
-from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.core.limiter import limiter
 
 from app.core.auth import verify_api_key
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.models.news_event import NewsEvent
 from app.schemas.theme import ThemeItem
 

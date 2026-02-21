@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 
@@ -49,7 +49,7 @@ class FinnhubCollector:
                     published_at = None
                     if raw.get("datetime"):
                         published_at = datetime.fromtimestamp(
-                            raw["datetime"], tz=timezone.utc
+                            raw["datetime"], tz=UTC
                         ).isoformat()
 
                     items.append({
@@ -78,7 +78,7 @@ class FinnhubCollector:
         if not self.api_key:
             return []
 
-        today = datetime.now(timezone.utc)
+        today = datetime.now(UTC)
         if not to_date:
             to_date = today.strftime("%Y-%m-%d")
         if not from_date:
@@ -105,7 +105,7 @@ class FinnhubCollector:
                     published_at = None
                     if raw.get("datetime"):
                         published_at = datetime.fromtimestamp(
-                            raw["datetime"], tz=timezone.utc
+                            raw["datetime"], tz=UTC
                         ).isoformat()
 
                     items.append({

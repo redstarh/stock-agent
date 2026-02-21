@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+import app.models  # noqa: F401 — register all models with Base.metadata
 from app.api.health import router as health_router
 from app.api.prediction import router as prediction_router
 from app.api.router import api_v1_router
@@ -21,7 +22,6 @@ from app.core.logging import setup_logging
 from app.core.middleware import RequestLoggingMiddleware
 from app.core.monitoring import init_sentry, sanitize_exception_message, setup_prometheus
 from app.models.base import Base
-import app.models  # noqa: F401 — register all models with Base.metadata
 
 logger = logging.getLogger(__name__)
 

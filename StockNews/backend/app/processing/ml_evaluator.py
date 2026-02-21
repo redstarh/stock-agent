@@ -92,7 +92,7 @@ class MLEvaluator:
 
         result = [
             {"name": name, "importance": round(float(imp), 4)}
-            for name, imp in zip(feature_names, importances)
+            for name, imp in zip(feature_names, importances, strict=False)
         ]
 
         return sorted(result, key=lambda x: x["importance"], reverse=True)

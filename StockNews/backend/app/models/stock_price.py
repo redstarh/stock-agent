@@ -1,6 +1,6 @@
 """StockPrice SQLAlchemy 모델."""
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import Date, DateTime, Float, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -23,7 +23,7 @@ class StockPrice(Base):
     )  # daily % change
     volume: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     __table_args__ = (Index("ix_stock_price_code_date", "stock_code", "date", unique=True),)

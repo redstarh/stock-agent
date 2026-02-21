@@ -1,5 +1,6 @@
 """RSS 피드 수집기."""
 
+import contextlib
 import logging
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
@@ -47,10 +48,8 @@ class RssCollector:
 
             published_at = None
             if pub_date:
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     published_at = parsedate_to_datetime(pub_date)
-                except (ValueError, TypeError):
-                    pass
 
             items.append({
                 "title": title,

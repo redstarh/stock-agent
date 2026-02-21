@@ -1,6 +1,5 @@
 """Redis Pub/Sub 속보 발행/구독."""
 
-import asyncio
 import json
 import logging
 from typing import TYPE_CHECKING

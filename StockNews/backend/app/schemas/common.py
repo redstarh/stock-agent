@@ -1,11 +1,11 @@
 """공통 스키마 — SentimentEnum, TimelinePoint, HealthResponse."""
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 
-class SentimentEnum(str, Enum):
+class SentimentEnum(StrEnum):
     """감성 분석 결과."""
 
     positive = "positive"

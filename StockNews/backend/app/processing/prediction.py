@@ -1,9 +1,9 @@
 """뉴스 기반 주가 방향 예측 모델."""
 
+import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
-import numpy as np
 
 
 class NewsPredictionModel:
@@ -50,7 +50,7 @@ class NewsPredictionModel:
         probabilities = self.model.predict_proba(X_scaled)
 
         results = []
-        for pred, proba in zip(predictions, probabilities):
+        for pred, proba in zip(predictions, probabilities, strict=False):
             confidence = float(max(proba))
             results.append({"direction": str(pred), "confidence": confidence})
 
@@ -94,7 +94,7 @@ def run_backtest(
     pred_directions = [p["direction"] for p in predictions]
 
     # Accuracy
-    correct = sum(1 for p, a in zip(pred_directions, test_y) if p == a)
+    correct = sum(1 for p, a in zip(pred_directions, test_y, strict=False) if p == a)
     accuracy = correct / len(test_y) if test_y else 0.0
 
     # Correlation (direction → numeric: up=1, neutral=0, down=-1)

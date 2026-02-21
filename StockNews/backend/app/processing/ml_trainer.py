@@ -7,7 +7,6 @@ Train dates < validation dates < test dates 보장.
 import hashlib
 import logging
 import pickle
-from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -85,8 +84,8 @@ class MLTrainer:
         """
         try:
             import lightgbm as lgb
-        except ImportError:
-            raise ImportError("lightgbm is required. Install: pip install lightgbm>=4.0.0")
+        except ImportError as err:
+            raise ImportError("lightgbm is required. Install: pip install lightgbm>=4.0.0") from err
 
         default_params = {
             "n_estimators": 100,
@@ -110,7 +109,7 @@ class MLTrainer:
         # Feature importances
         importances = dict(zip(
             self.feature_columns,
-            [float(v) for v in model.feature_importances_],
+            [float(v) for v in model.feature_importances_], strict=False,
         ))
 
         return {
@@ -145,7 +144,7 @@ class MLTrainer:
 
         importances = dict(zip(
             self.feature_columns,
-            [float(v) for v in model.feature_importances_],
+            [float(v) for v in model.feature_importances_], strict=False,
         ))
 
         return {
@@ -232,8 +231,8 @@ class MLTrainer:
         """
         try:
             import shap
-        except ImportError:
-            raise ImportError("shap is required. Install: pip install shap>=0.43.0")
+        except ImportError as err:
+            raise ImportError("shap is required. Install: pip install shap>=0.43.0") from err
 
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(X)
@@ -264,13 +263,13 @@ class MLTrainer:
 
         result = [
             {"name": name, "importance": round(float(imp), 4)}
-            for name, imp in zip(self.feature_columns, feature_importance)
+            for name, imp in zip(self.feature_columns, feature_importance, strict=False)
         ]
         result.sort(key=lambda x: x["importance"], reverse=True)
 
         mean_shap = {
             name: round(float(imp), 4)
-            for name, imp in zip(self.feature_columns, feature_importance)
+            for name, imp in zip(self.feature_columns, feature_importance, strict=False)
         }
 
         return {
@@ -307,8 +306,8 @@ class MLTrainer:
         """
         try:
             import optuna
-        except ImportError:
-            raise ImportError("optuna is required. Install: pip install optuna>=3.5.0")
+        except ImportError as err:
+            raise ImportError("optuna is required. Install: pip install optuna>=3.5.0") from err
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
 
@@ -322,8 +321,8 @@ class MLTrainer:
             if model_type == "lightgbm":
                 try:
                     import lightgbm as lgb
-                except ImportError:
-                    raise ImportError("lightgbm required for tuning")
+                except ImportError as err:
+                    raise ImportError("lightgbm required for tuning") from err
 
                 params = {
                     "n_estimators": trial.suggest_int("n_estimators", 50, 300),

@@ -110,7 +110,7 @@ class ArticleScraper:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         mapping: dict[str, ScrapeResult] = {}
-        for item, result in zip(items, results):
+        for item, result in zip(items, results, strict=False):
             url = item.get("source_url", "")
             if isinstance(result, Exception):
                 mapping[url] = ScrapeResult(url=url, body=None, error=str(result))

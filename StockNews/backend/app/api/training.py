@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from app.core.auth import verify_api_key
 from app.core.database import get_db
 from app.core.limiter import limiter
-from app.models.ml_model import MLModel
 from app.models.training import StockTrainingData
 from app.processing.feature_config import get_features_for_tier, get_min_samples_for_tier
 from app.processing.ml_evaluator import MLEvaluator
@@ -253,7 +252,7 @@ async def train_model(
 
     try:
         X, y = trainer.load_training_data(db)
-    except ValueError as e:
+    except ValueError:
         # Insufficient samples
         return {
             "status": "insufficient_data",
@@ -362,7 +361,7 @@ async def activate_model(
         registry.activate(model_id, db)
     except ValueError as e:
         from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     return {"status": "activated", "model_id": model_id}
 
@@ -382,7 +381,7 @@ async def evaluate_model(
     if not active:
         return {"status": "no_active_model", "market": market}
 
-    feature_list = json.loads(active.feature_list) if active.feature_list else []
+    json.loads(active.feature_list) if active.feature_list else []
 
     trainer = MLTrainer(market=market, tier=active.feature_tier)
     X, y = trainer.load_training_data(db)
