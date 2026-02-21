@@ -1,14 +1,14 @@
 """API 인증 테스트."""
 
 import pytest
-from fastapi import Request, status
+from fastapi import status
 from fastapi.testclient import TestClient
 
-from app.core.auth import is_public_endpoint, verify_api_key
+from app.core.auth import is_public_endpoint
 from app.core.config import settings
 from app.main import app
 
-client = TestClient(app)
+client = TestClient(app, raise_server_exceptions=False)
 
 
 class TestPublicEndpoints:

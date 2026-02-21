@@ -7,6 +7,10 @@ from sklearn.ensemble import RandomForestClassifier
 
 from app.processing.ml_trainer import MLTrainer
 
+# Skip entire module if optional dependencies are missing
+shap = pytest.importorskip("shap", reason="shap>=0.43.0 required for SHAP tests")
+optuna = pytest.importorskip("optuna", reason="optuna>=3.5.0 required for Optuna tests")
+
 
 @pytest.fixture
 def sample_data():
