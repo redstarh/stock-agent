@@ -81,23 +81,26 @@ async def get_top_news(
     response: Response,
     market: str = Query(..., description="마켓 (KR/US)"),
     limit: int = Query(10, ge=1, le=50, description="최대 건수"),
+    date_str: str | None = Query(None, alias="date", description="날짜 (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
 ):
     """마켓별 Top 종목 뉴스 조회."""
-    results = (
-        db.query(
-            NewsEvent.stock_code,
-            NewsEvent.stock_name,
-            func.avg(NewsEvent.news_score).label("avg_score"),
-            func.avg(NewsEvent.sentiment_score).label("avg_sentiment"),
-            func.max(NewsEvent.sentiment).label("sentiment"),
-            func.count(NewsEvent.id).label("cnt"),
-            NewsEvent.market,
-        )
-        .filter(NewsEvent.market == market)
-        .group_by(NewsEvent.stock_code, NewsEvent.stock_name, NewsEvent.market)
-        .all()
-    )
+    base_q = db.query(
+        NewsEvent.stock_code,
+        NewsEvent.stock_name,
+        func.avg(NewsEvent.news_score).label("avg_score"),
+        func.avg(NewsEvent.sentiment_score).label("avg_sentiment"),
+        func.max(NewsEvent.sentiment).label("sentiment"),
+        func.count(NewsEvent.id).label("cnt"),
+        NewsEvent.market,
+    ).filter(NewsEvent.market == market)
+
+    if date_str:
+        from datetime import datetime as dt
+        target_date = dt.strptime(date_str, "%Y-%m-%d").date()
+        base_q = base_q.filter(func.date(NewsEvent.published_at) == target_date)
+
+    results = base_q.group_by(NewsEvent.stock_code, NewsEvent.stock_name, NewsEvent.market).all()
 
     # Calculate prediction scores and sort by them
     items = []

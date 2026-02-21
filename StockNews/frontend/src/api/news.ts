@@ -12,9 +12,10 @@ export interface NewsFilterParams {
 }
 
 /** Top 종목 뉴스 조회 */
-export function fetchTopNews(market: string, limit?: number): Promise<NewsTopItem[]> {
+export function fetchTopNews(market: string, limit?: number, date?: string): Promise<NewsTopItem[]> {
   const params = new URLSearchParams({ market });
   if (limit) params.set('limit', String(limit));
+  if (date) params.set('date', date);
   return apiClient.get<NewsTopItem[]>(`/news/top?${params}`);
 }
 

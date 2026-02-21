@@ -9,6 +9,7 @@ import StockDetailPage from './pages/StockDetailPage';
 import ThemeAnalysisPage from './pages/ThemeAnalysisPage';
 import VerificationPage from './pages/VerificationPage';
 import MLDashboardPage from './pages/MLDashboardPage';
+import SystemComparisonPage from './pages/SystemComparisonPage';
 import Toast from './components/common/Toast';
 import { useWebSocket } from './hooks/useWebSocket';
 import type { BreakingNewsData } from './types/api';
@@ -58,6 +59,7 @@ export default function App() {
               <Route path="/themes" element={<ThemeAnalysisPage />} />
               <Route path="/verification" element={<VerificationPage />} />
               <Route path="/ml-dashboard" element={<MLDashboardPage />} />
+              <Route path="/compare-systems" element={<SystemComparisonPage />} />
             </Routes>
           </Layout>
         </MarketProvider>

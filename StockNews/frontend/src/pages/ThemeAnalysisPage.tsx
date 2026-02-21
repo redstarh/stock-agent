@@ -13,7 +13,8 @@ const DIRECTION_STYLE = {
   neutral: { color: '#6b7280', arrow: '—', label: '중립' },
 } as const;
 
-function getRiseDirection(riseIndex: number) {
+function getRiseDirection(riseIndex: number | null | undefined) {
+  if (riseIndex == null) return 'neutral';
   if (riseIndex >= 60) return 'up';
   if (riseIndex < 40) return 'down';
   return 'neutral';
@@ -57,10 +58,12 @@ function ThemeNewsCard({ title, stockName, source, publishedAt, score, label }: 
 
 export default function ThemeAnalysisPage() {
   const { market } = useMarket();
+  const today = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(today);
   const [expandedTheme, setExpandedTheme] = useState<string | null>(null);
-  const { data, isLoading } = useThemeStrength(market);
+  const { data, isLoading, isError } = useThemeStrength(market, selectedDate);
 
-  const sorted = [...(data ?? [])].sort((a, b) => b.rise_index - a.rise_index);
+  const sorted = [...(data ?? [])].sort((a, b) => (b.rise_index ?? 0) - (a.rise_index ?? 0));
 
   const themeNews = useQuery({
     queryKey: ['themeNews', expandedTheme],
@@ -76,10 +79,38 @@ export default function ThemeAnalysisPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-900">테마 분석</h2>
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-gray-500">날짜</label>
+          <input
+            type="date"
+            value={selectedDate}
+            max={today}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="rounded-lg border px-3 py-1.5 text-sm"
+          />
+          {selectedDate !== today && (
+            <button
+              onClick={() => setSelectedDate(today)}
+              className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-500 hover:bg-gray-200"
+            >
+              오늘
+            </button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
         <Loading message="테마 로딩 중..." />
+      ) : isError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-red-600">테마 데이터를 불러올 수 없습니다</p>
+          <button
+            onClick={() => setSelectedDate(today)}
+            className="mt-2 rounded bg-red-100 px-3 py-1 text-sm text-red-700 hover:bg-red-200"
+          >
+            오늘 날짜로 재시도
+          </button>
+        </div>
       ) : (
         <>
           <section>
@@ -114,7 +145,7 @@ export default function ThemeAnalysisPage() {
                       </div>
                       <div className="flex items-center gap-4 text-sm text-gray-500">
                         <span className="text-base font-bold" style={{ color: style.color }}>
-                          {item.rise_index.toFixed(1)}
+                          {(item.rise_index ?? 0).toFixed(1)}
                         </span>
                         <span>뉴스 {item.news_count}건</span>
                         <span className="text-gray-400">{isExpanded ? '▾' : '▸'}</span>
@@ -167,7 +198,7 @@ export default function ThemeAnalysisPage() {
                                       stockName={n.stock_name ?? n.stock_code}
                                       source={n.source}
                                       publishedAt={n.published_at}
-                                      score={Math.round(n.impact * 100)}
+                                      score={Math.round((n.impact ?? 0) * 100)}
                                       label="국외"
                                     />
                                   ))}

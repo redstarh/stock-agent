@@ -3,9 +3,10 @@ import type { ThemeItem } from '../types/theme';
 import type { NewsItem } from '../types/news';
 
 /** 테마 강도 순위 조회 */
-export function fetchThemeStrength(market?: string): Promise<ThemeItem[]> {
+export function fetchThemeStrength(market?: string, date?: string): Promise<ThemeItem[]> {
   const params = new URLSearchParams();
   if (market) params.set('market', market);
+  if (date) params.set('date', date);
   const query = params.toString();
   return apiClient.get<ThemeItem[]>(`/theme/strength${query ? `?${query}` : ''}`);
 }

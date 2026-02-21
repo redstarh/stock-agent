@@ -98,7 +98,8 @@ StockNews는 한국/미국 주식 시장의 뉴스를 수집, 분석, 점수화�
 │   - Stock Detail        │    │   - Breaking News Alert       │
 │   - Theme Analysis      │    │                               │
 │   - Prediction View     │    │                               │
-│   - Verification View   │    │                               │
+│   - Verification (Advan)│    │                               │
+│   - 예측 비교            │    │                               │
 └─────────────────────────┘    └───────────────────────────────┘
 ```
 
@@ -264,6 +265,11 @@ dependencies = [
 4. `daily_prediction_result` — 일별 예측 검증 결과
 5. `theme_prediction_accuracy` — 테마별 예측 정확도
 6. `verification_run_log` — 검증 실행 로그
+7. `advan_simulation_run` — Advan 시뮬레이션 실행 기록
+8. `advan_event` — Advan 이벤트 (뉴스 기반 추출)
+9. `advan_prediction` — Advan 예측 결과 (Up/Down/Flat/Abstain)
+10. `advan_label` — Advan 예측 라벨 (실현 수익률 기반 검증)
+11. `advan_policy` — Advan 예측 정책 (v1 휴리스틱, v2 개선)
 
 ### 3.2 news_event Table
 
@@ -450,7 +456,7 @@ async def get_top_news(request: Request, response: Response, ...):
 | Method | Path | Description | Rate Limit |
 |--------|------|-------------|------------|
 | GET | `/api/v1/news/score` | 종목별 뉴스 스코어 조회 | 60/min |
-| GET | `/api/v1/news/top` | 마켓별 Top 종목 | 60/min |
+| GET | `/api/v1/news/top` | 마켓별 Top 종목 (date 필터 지원) | 60/min |
 | GET | `/api/v1/news/latest` | 최신 뉴스 목록 (페이지네이션) | 60/min |
 
 **Example: GET /api/v1/news/score**
@@ -505,7 +511,7 @@ Response 200:
 
 | Method | Path | Description | Rate Limit |
 |--------|------|-------------|------------|
-| GET | `/api/v1/themes/strength` | 테마 강도 순위 | 60/min |
+| GET | `/api/v1/themes/strength` | 테마 강도 순위 (date 필터 지원) | 60/min |
 
 #### Prediction Endpoints (Phase 3)
 
@@ -1271,17 +1277,19 @@ def test_news_score_api_contract():
 
 ## Document End
 
-**최종 검증일:** 2026-02-21
+**최종 검증일:** 2026-02-22
 **검증 항목:**
-- Backend 192 tests 통과
-- Frontend 110 unit tests + 18 E2E tests 통과
+- Backend 570 tests 통과
+- Frontend 200 unit tests + 18 E2E tests 통과
 - Build 성공 (tsc + vite build)
 - API 엔드포인트 동작 확인
 - Redis Pub/Sub 동작 확인
 - Docker Compose 기동 확인
+- Advan 예측 시스템 (v1/v2 휴리스틱) 동작 확인
 
 **관련 문서:**
 - `docs/StockNews-v1.0.md` — 전체 시스템 설계서
 - `docs/PredictionVerification-Architecture.md` — 예측 검증 시스템 설계
+- `docs/News_Predict_Strategy.md` — Advan 예측 전략 문서
 - `CLAUDE.md` — 프로젝트별 Claude 가이드
 - `~/AgentDev/CLAUDE.md` — 크로스 프로젝트 통합 가이드

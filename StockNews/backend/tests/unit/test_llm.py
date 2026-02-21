@@ -2,7 +2,7 @@
 
 import json
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 
 class TestCallLlm:
@@ -129,7 +129,7 @@ class TestGetBedrockClient:
             aws_secret_access_key="test-secret",
             region_name="ap-northeast-2",
         )
-        mock_session.client.assert_called_once_with("bedrock-runtime")
+        mock_session.client.assert_called_once_with("bedrock-runtime", config=ANY)
         get_bedrock_client.cache_clear()
 
     def test_creates_client_with_profile(self, monkeypatch):
@@ -152,7 +152,7 @@ class TestGetBedrockClient:
             profile_name="my-profile",
             region_name="us-east-1",
         )
-        mock_session.client.assert_called_once_with("bedrock-runtime")
+        mock_session.client.assert_called_once_with("bedrock-runtime", config=ANY)
         get_bedrock_client.cache_clear()
 
     def test_creates_client_without_credentials(self, monkeypatch):
@@ -174,5 +174,5 @@ class TestGetBedrockClient:
         mock_session_cls.assert_called_once_with(
             region_name="us-east-1",
         )
-        mock_session.client.assert_called_once_with("bedrock-runtime")
+        mock_session.client.assert_called_once_with("bedrock-runtime", config=ANY)
         get_bedrock_client.cache_clear()

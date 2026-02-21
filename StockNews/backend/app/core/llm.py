@@ -5,6 +5,7 @@ import re
 from functools import lru_cache
 
 import boto3
+from botocore.config import Config
 
 from app.core.config import settings
 
@@ -23,7 +24,12 @@ def get_bedrock_client():
 
     session_kwargs["region_name"] = settings.aws_region
     session = boto3.Session(**session_kwargs)
-    return session.client("bedrock-runtime")
+    boto_config = Config(
+        connect_timeout=5,
+        read_timeout=30,
+        retries={"max_attempts": 1},
+    )
+    return session.client("bedrock-runtime", config=boto_config)
 
 
 def call_llm(system_prompt: str, user_message: str, *, model_id: str = "") -> str:

@@ -96,7 +96,71 @@ All three phases are **complete and deployed**.
 - **Phase 2:** US market (Finnhub/NewsAPI), LLM sentiment tuning, news summary, scheduler optimization ✅
 - **Phase 3:** AI prediction model (Random Forest), prediction API, prediction dashboard ✅
 
-**Tests:** Backend 192 passed | Frontend 110 unit tests | E2E 18 tests | Build clean
+**Tests:** Backend 651 passed | Frontend 196 unit tests | E2E 18 tests | Build clean
+
+## Development Commands
+
+```bash
+# Backend
+cd backend && .venv/bin/python -m pytest -q          # Run backend tests
+cd backend && .venv/bin/uvicorn app.main:app --port 8001  # Start backend server
+
+# Frontend
+cd frontend && npx tsc --noEmit                       # TypeScript check
+cd frontend && npx vitest run                          # Run frontend tests
+cd frontend && npm run dev                             # Start dev server (port 5173)
+```
+
+## Task Execution Best Practices
+
+When working on multiple tasks in this project, follow these guidelines:
+
+### Parallel vs Sequential Execution
+
+| Task Type | Execution | Reason |
+|-----------|-----------|--------|
+| Independent page UI changes | **Parallel** | Different files, no conflicts |
+| Backend API + Frontend API client | **Sequential** | Frontend depends on backend signatures |
+| Backend API changes for different endpoints | **Parallel** | Different functions in same/different files |
+| Bug fixes on different pages | **Parallel** | No file overlap |
+| Test runs after changes | **Sequential** | Must verify after code changes |
+| Shared file changes (hooks, API clients) | **Single agent** | Avoid write conflicts |
+| Documentation updates | **After all code** | Reflect final state |
+
+### Conflict Avoidance Rules
+
+1. **Shared files** (API clients, hooks, types) must be modified by a single agent. Never assign the same file to parallel agents.
+2. **Layer ordering**: Backend API → Frontend API client → Frontend hooks → Page components (each layer depends on the previous).
+3. **Agent grouping**: Group tasks that share files into one agent. Split tasks that touch independent files into parallel agents.
+4. **Example**: Dashboard + ThemeAnalysis both use `themes.ts` → one agent handles both API+hook changes, another handles the pages.
+
+### Agent Selection by Task Type
+
+| Task | Agent | Tier | Notes |
+|------|-------|------|-------|
+| Backend API endpoint changes | `executor` | Sonnet | Python/FastAPI, SQLAlchemy queries |
+| Frontend page UI changes | `executor` | Sonnet | React/TypeScript/TailwindCSS |
+| Frontend component styling | `designer` | Sonnet | Complex UI/UX design |
+| Chart performance issues | `executor` | Sonnet | Recharts optimization, data filtering |
+| Database schema changes | `executor-high` | Opus | Migration safety, data integrity |
+| Cross-page refactoring | `executor-high` | Opus | Multiple file coordination |
+| NLP/ML pipeline changes | `executor-high` | Opus | Sentiment analysis, prediction models |
+| Quick bug fix (single file) | `executor-low` | Haiku | Simple, targeted changes |
+| Architecture review | `architect` | Opus | API design, scaling decisions |
+| Code review | `code-reviewer` | Opus | Quality, security, patterns |
+| Test verification | `build-fixer` | Sonnet | Test failures, TypeScript errors |
+| Codebase search | `explore` | Haiku | Find files/patterns quickly |
+
+### Workflow Pattern
+
+1. **Read first** — Always read files before proposing changes
+2. **Group by dependency** — Identify shared files (API clients, hooks) to avoid conflicts
+3. **Backend before frontend** — When adding API parameters, update backend → API client → hooks → pages
+4. **Verify after changes** — Run `tsc --noEmit` + `vitest run` (frontend), `pytest -q` (backend)
+5. **Date filtering pattern** — Backend: add `date_str` Query param with alias; Frontend: add to hook queryKey for cache invalidation
+6. **Null safety** — Always use `(value ?? 0).toFixed()` for numeric display, `value ?? fallback` for optional fields
+7. **Chart performance** — Disable Recharts animation with `isAnimationActive={false}` for data-heavy charts
+8. **Date-dependent state** — Default date picker to latest date with data (use `useEffect` with API response), not `new Date()` which may have no data
 
 ## StockAgent Integration
 

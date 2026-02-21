@@ -110,6 +110,8 @@
 │  • Stock Detail          │         │  • Breaking News Alert      │
 │  • Theme Analysis        │         │  • Redis Subscriber         │
 │  • Prediction View       │         │                             │
+│  • Verification (Advan)  │         │                             │
+│  • 예측 비교              │         │                             │
 │  • Real-time WebSocket   │         │                             │
 └──────────────────────────┘         └─────────────────────────────┘
 ```
@@ -1071,10 +1073,11 @@ ws.onmessage = (event) => {
 ```
 DashboardPage Mount
     ↓
+State: selectedDate (default: today)
+    ↓
 Parallel Queries:
-  • fetchTopNews(market)       → NewsTopList
-  • fetchThemeStrength(market) → ThemeStrengthList
-  • fetchLatestNews(market)    → NewsList
+  • fetchTopNews(market, date)       → NewsTopList (date-filtered)
+  • fetchThemeStrength(market, date) → ThemeStrengthList (date-filtered)
     ↓
 Render:
   • TopStockCards (grid of top 10)
@@ -1108,10 +1111,12 @@ Render:
 ```
 ThemeAnalysisPage Mount
     ↓
-fetchThemeStrength(market)
+State: selectedDate (default: today)
+    ↓
+fetchThemeStrength(market, date)
     ↓
 Render:
-  • ThemeStrengthChart (horizontal bar)
+  • ThemeStrengthChart (horizontal bar, no animation, color-coded by rise_index)
     ↓
 User clicks theme (e.g., "AI")
     ↓
@@ -1122,17 +1127,64 @@ Render:
   • Each stock: code, name, score, sentiment
 ```
 
+**Verification Page (Advan 기반):**
+```
+VerificationPage Mount
+    ↓
+State: selectedRunId (auto-select latest completed run)
+    ↓
+Queries:
+  • useAdvanRuns({ market, status: 'completed' })  → 완료된 실행 목록
+    ↓
+useEffect: Auto-select latest run (ID 내림차순)
+    ↓
+Parallel Queries (selectedRunId 기반):
+  • useAdvanRun(selectedRunId)          → 실행 상세 (predictions + labels + direction_stats)
+  • useAdvanRunByStock(selectedRunId)   → 종목별 결과
+  • useAdvanRunByTheme(selectedRunId)   → 테마별 정확도
+    ↓
+useMemo: Map Advan data to component formats
+  • accuracyData: runDetail → AccuracyResponse (direction stats 0-1→0-100 변환)
+  • stockResults: predictions + labels → DailyPredictionResult[] (Abstain 제외)
+  • themeAccuracyData: byTheme → ThemeAccuracy[]
+    ↓
+Render:
+  • Run selector dropdown (completed runs)
+  • Run info banner (name, date range, accuracy)
+  • AccuracyOverviewCard (run-level accuracy)
+  • StockResultsTable (종목별 검증 결과)
+  • ThemeAccuracyBreakdown (테마별 정확도)
+```
+
+**예측 비교 Page (SystemComparisonPage):**
+```
+SystemComparisonPage Mount
+    ↓
+Parallel Queries:
+  • StockNews 예측: useDailyResults(date, market)
+  • Advan 실행 목록: useAdvanRuns({ market, status: 'completed' })
+    ↓
+State: selectedRunId, compareRunId (두 실행 비교 가능)
+    ↓
+Render:
+  • StockNews 예측 vs Advan 예측 비교 테이블
+  • 실행 선택 드롭다운 (v1/v2 비교)
+  • 종목별/테마별 정확도 비교
+```
+
 ---
 
 ## Document End
 
-**최종 검증일:** 2026-02-21
+**최종 검증일:** 2026-02-22
 **검증 항목:**
 - 전체 시스템 흐름 검증 (수집 → 처리 → 분석 → 저장 → 배포)
 - 각 컴포넌트 간 데이터 흐름 확인
 - API/WebSocket/Redis Pub-Sub 통신 패턴 검증
 - ML Pipeline 동작 확인
 - Frontend 상태 관리 및 렌더링 흐름 검증
+- Advan 예측 시스템 (이벤트 추출 → 휴리스틱 예측 → 라벨링 → 검증) 흐름 확인
+- Verification 페이지 Advan 연동 확인
 
 **관련 문서:**
 - `docs/StockNews-v1.0.md` — 전체 시스템 설계서

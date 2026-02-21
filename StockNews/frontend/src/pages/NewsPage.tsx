@@ -10,8 +10,10 @@ const THEMES = ['반도체', '2차전지', 'AI/로봇', '바이오', '자동차'
 
 export default function NewsPage() {
   const { market } = useMarket();
-  const [filters, setFilters] = useState<NewsFilters>(DEFAULT_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<NewsFilters>(DEFAULT_FILTERS);
+  const today = new Date().toISOString().split('T')[0];
+  const initialFilters: NewsFilters = { ...DEFAULT_FILTERS, dateFrom: today, dateTo: today };
+  const [filters, setFilters] = useState<NewsFilters>(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState<NewsFilters>(initialFilters);
 
   const handleApply = useCallback(() => {
     setAppliedFilters(filters);

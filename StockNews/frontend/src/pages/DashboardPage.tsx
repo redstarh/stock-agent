@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTopNews } from '../hooks/useTopNews';
@@ -10,17 +11,37 @@ import ThemeStrengthChart from '../components/charts/ThemeStrengthChart';
 export default function DashboardPage() {
   const { market } = useMarket();
   const navigate = useNavigate();
+  const today = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(today);
 
-  const topNews = useTopNews(market);
+  const topNews = useTopNews(market, selectedDate);
   const themes = useQuery({
-    queryKey: ['themeStrength', market],
-    queryFn: () => fetchThemeStrength(market),
+    queryKey: ['themeStrength', market, selectedDate],
+    queryFn: () => fetchThemeStrength(market, selectedDate),
   });
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-900">대시보드</h2>
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-gray-500">날짜</label>
+          <input
+            type="date"
+            value={selectedDate}
+            max={today}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="rounded-lg border px-3 py-1.5 text-sm"
+          />
+          {selectedDate !== today && (
+            <button
+              onClick={() => setSelectedDate(today)}
+              className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-500 hover:bg-gray-200"
+            >
+              오늘
+            </button>
+          )}
+        </div>
       </div>
 
       <section>

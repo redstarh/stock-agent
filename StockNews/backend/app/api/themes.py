@@ -4,6 +4,7 @@ import json
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Request, Response
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.auth import verify_api_key
@@ -26,22 +27,27 @@ async def get_theme_strength(
     response: Response,
     market: str | None = Query(None, description="마켓 필터 (KR/US)"),
     limit: int = Query(20, ge=1, le=100, description="최대 건수"),
+    date_str: str | None = Query(None, alias="date", description="날짜 (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
 ):
     """테마 강도 순위 조회 (news_event에서 실시간 집계, 복합 테마 분리).
 
     rise_index는 국내(KR)+국외(US) 뉴스를 모두 고려하여 0-100으로 산출.
     """
+    # Build base filter conditions
+    base_filters = [NewsEvent.theme.isnot(None), NewsEvent.theme != ""]
+    if date_str:
+        from datetime import datetime as dt
+        target_date = dt.strptime(date_str, "%Y-%m-%d").date()
+        base_filters.append(func.date(NewsEvent.published_at) == target_date)
+
     # 1) 전체 뉴스 조회 (market 무관) — rise_index 계산용
     all_rows = db.query(
         NewsEvent.theme,
         NewsEvent.sentiment_score,
         NewsEvent.news_score,
         NewsEvent.market,
-    ).filter(
-        NewsEvent.theme.isnot(None),
-        NewsEvent.theme != "",
-    ).all()
+    ).filter(*base_filters).all()
 
     # 전체 데이터에서 테마별 KR/US 분리 집계
     global_data: dict[str, dict[str, list[tuple[float, float]]]] = {}
@@ -56,13 +62,14 @@ async def get_theme_strength(
             global_data[t][key].append((sentiment_score, news_score))
 
     # Also query US news with cross-market impact data
+    us_filter = [NewsEvent.market == "US", NewsEvent.kr_impact_themes.isnot(None)]
+    if date_str:
+        us_filter.append(func.date(NewsEvent.published_at) == target_date)
+
     us_impact_rows = db.query(
         NewsEvent.kr_impact_themes,
         NewsEvent.news_score,
-    ).filter(
-        NewsEvent.market == "US",
-        NewsEvent.kr_impact_themes.isnot(None),
-    ).all()
+    ).filter(*us_filter).all()
 
     # Incorporate US cross-market impacts into global data
     for kr_impact_json, news_score in us_impact_rows:
@@ -124,7 +131,7 @@ async def get_theme_strength(
                 theme_data[t] = []
             theme_data[t].append((sentiment_score, news_score))
 
-    today = str(date.today())
+    result_date = date_str if date_str else str(date.today())
 
     items = []
     for theme, scores in theme_data.items():
@@ -137,7 +144,7 @@ async def get_theme_strength(
             news_count=news_count,
             sentiment_avg=round(avg_sentiment, 3),
             rise_index=calc_rise_index(theme),
-            date=today,
+            date=result_date,
             market=market or "ALL",
         ))
 

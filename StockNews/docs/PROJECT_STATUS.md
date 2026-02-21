@@ -30,6 +30,7 @@ StockNews는 한국/미국 주식 시장의 뉴스를 수집, 분석, 스코어�
 | Phase 4 | Verification engine + Training data pipeline (53 files) | Complete |
 | ML Pipeline | 5-phase ML pipeline (yfinance, model registry, SHAP, Optuna) | Complete |
 | Production | Monitoring, security, CI/CD, Docker, logging | Complete |
+| Advan | 이벤트 기반 휴리스틱 예측 시스템 (v1/v2) + 시뮬레이션 엔진 | Complete |
 
 ---
 
@@ -69,12 +70,14 @@ frontend-unit-test ────────┘
 
 | Area | Framework | Tests | Status |
 |------|-----------|-------|--------|
-| Backend unit/integration | pytest | 651 passed, 1 skipped | PASS |
-| Frontend unit | vitest | 110 | PASS |
+| Backend unit/integration | pytest | 570 passed | PASS |
+| Frontend unit | vitest | 200 | PASS |
 | Frontend E2E | Playwright | 18 | PASS |
-| **Total** | | **779+** | **PASS** |
+| **Total** | | **788+** | **PASS** |
 
 Backend coverage: **87.48%** (threshold: 80%)
+
+> Note: Backend test count decreased from 651 to 570 due to Advan system refactoring (removed deprecated simulation/prediction tests, added new Advan-specific tests). Frontend tests increased from 196 to 200 with new Advan verification and comparison page tests.
 
 ---
 
@@ -171,7 +174,9 @@ Frontend (React 19 + Vite)
   │
   ├── REST API (/api/v1, /api/v2)
   ├── WebSocket (/ws/news)
-  └── Dashboard (News, Stocks, Themes, Predictions, Verification)
+  └── Dashboard (News, Stocks, Themes, Predictions, Verification (Advan), 예측 비교)
+      • All pages: date filtering support
+      • Verification: date-specific accuracy display
 
 Backend (FastAPI)
   │
@@ -179,6 +184,7 @@ Backend (FastAPI)
   ├── Processing (NLP, Sentiment, Theme Classification)
   ├── Scoring Engine (Recency 0.4 + Frequency 0.3 + Sentiment 0.2 + Disclosure 0.1)
   ├── ML Pipeline (Random Forest, SHAP, Optuna, Model Registry)
+  ├── Advan System (Event Extraction → Heuristic Prediction → Labeling → Verification)
   ├── Verification Engine (Prediction tracking + Price fetching)
   ├── Training Pipeline (Feature builder + Backfill)
   │
@@ -199,10 +205,10 @@ External Consumers
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v2/news/score?stock={code}` | News score for a stock |
-| GET | `/api/v2/news/top?market={KR\|US}` | Top scored news by market |
+| GET | `/api/v2/news/top?market={KR\|US}&date={YYYY-MM-DD}` | Top scored news by market (date optional) |
 | GET | `/api/v2/news/latest` | Latest news (paginated, filterable) |
 | GET | `/api/v2/stocks/{code}/timeline` | Score timeline for a stock |
-| GET | `/api/v2/themes/strength` | Theme strength rankings |
+| GET | `/api/v2/themes/strength?date={YYYY-MM-DD}` | Theme strength rankings (date optional) |
 | GET | `/api/versions` | Available API versions |
 | GET | `/health` | Server health (DB + Redis) |
 | GET | `/metrics` | Prometheus metrics |

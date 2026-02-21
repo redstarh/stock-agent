@@ -11,6 +11,15 @@ from app.models.verification import (
     ThemePredictionAccuracy,
     VerificationRunLog,
 )
+from app.advan.models import (
+    AdvanEvent,
+    AdvanEvalRun,
+    AdvanFeatureDaily,
+    AdvanLabel,
+    AdvanPolicy,
+    AdvanPrediction,
+    AdvanSimulationRun,
+)
 
 __all__ = [
     "Base",
@@ -22,4 +31,11 @@ __all__ = [
     "DailyPredictionResult",
     "ThemePredictionAccuracy",
     "VerificationRunLog",
+    "AdvanEvent",
+    "AdvanEvalRun",
+    "AdvanFeatureDaily",
+    "AdvanLabel",
+    "AdvanPolicy",
+    "AdvanPrediction",
+    "AdvanSimulationRun",
 ]

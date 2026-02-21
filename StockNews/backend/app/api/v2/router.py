@@ -8,6 +8,8 @@ from app.api.stocks import router as stocks_router
 from app.api.themes import router as themes_router
 from app.api.training import router as training_router
 from app.api.verification import router as verification_router
+from app.api.prediction_context import router as prediction_context_router
+from app.api.prediction_context import prediction_llm_router
 
 api_v2_router = APIRouter(prefix="/api/v2")
 
@@ -18,3 +20,5 @@ api_v2_router.include_router(stocks_router)
 api_v2_router.include_router(themes_router)
 api_v2_router.include_router(training_router)
 api_v2_router.include_router(verification_router)
+api_v2_router.include_router(prediction_context_router)
+api_v2_router.include_router(prediction_llm_router)

@@ -18,6 +18,7 @@ export default function Sidebar({ market, onMarketChange }: SidebarProps) {
     { path: '/themes', label: 'Theme Analysis', icon: '🎯' },
     { path: '/verification', label: 'Verification', icon: '✅' },
     { path: '/ml-dashboard', label: 'ML Dashboard', icon: '🤖' },
+    { path: '/compare-systems', label: '예측 비교', icon: '⚖️' },
   ];
 
   return (
