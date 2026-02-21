@@ -48,37 +48,59 @@ def test_v1_v2_same_results(client, auth_headers):
         assert v1_response.json() == v2_response.json()
 
 
-def test_v1_deprecation_headers(client, auth_headers):
+def test_v1_deprecation_headers(client):
     """v1 응답에 deprecation 헤더가 포함되는지 확인."""
-    response = client.get("/api/v1/news/latest?market=KR", headers=auth_headers)
+    # /api/versions는 DB 불필요 — 미들웨어 헤더 테스트에 적합
+    # v1 경로로 직접 접근하여 미들웨어 동작 확인
+    from fastapi import FastAPI
+    from starlette.testclient import TestClient as StarletteTestClient
 
-    # 버전 헤더 확인
+    from app.core.versioning import APIVersionMiddleware
+
+    test_app = FastAPI()
+    test_app.add_middleware(APIVersionMiddleware)
+
+    @test_app.get("/api/v1/test")
+    def v1_test():
+        return {"ok": True}
+
+    @test_app.get("/api/v2/test")
+    def v2_test():
+        return {"ok": True}
+
+    tc = StarletteTestClient(test_app)
+    response = tc.get("/api/v1/test")
+
+    assert response.status_code == 200
     assert response.headers.get("X-API-Version") == "v1"
-
-    # Deprecation 헤더 확인
     assert response.headers.get("Deprecation") == "true"
-
-    # Sunset 헤더 확인 (RFC 8594)
     assert "Sunset" in response.headers
     assert "2026" in response.headers["Sunset"]
-
-    # Link 헤더 확인 (successor-version)
     assert "Link" in response.headers
     assert "/api/v2/" in response.headers["Link"]
     assert 'rel="successor-version"' in response.headers["Link"]
 
 
-def test_v2_no_deprecation_headers(client, auth_headers):
+def test_v2_no_deprecation_headers(client):
     """v2 응답에는 deprecation 헤더가 없는지 확인."""
-    response = client.get("/api/v2/news/latest?market=KR", headers=auth_headers)
+    from fastapi import FastAPI
+    from starlette.testclient import TestClient as StarletteTestClient
 
-    # 버전 헤더만 있음
+    from app.core.versioning import APIVersionMiddleware
+
+    test_app = FastAPI()
+    test_app.add_middleware(APIVersionMiddleware)
+
+    @test_app.get("/api/v2/test")
+    def v2_test():
+        return {"ok": True}
+
+    tc = StarletteTestClient(test_app)
+    response = tc.get("/api/v2/test")
+
+    assert response.status_code == 200
     assert response.headers.get("X-API-Version") == "v2"
-
-    # Deprecation 헤더 없음
     assert "Deprecation" not in response.headers
-
-    # Sunset 헤더 없음
     assert "Sunset" not in response.headers
 
 
