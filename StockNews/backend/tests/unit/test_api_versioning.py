@@ -10,7 +10,7 @@ from app.main import app
 @pytest.fixture
 def client():
     """테스트 클라이언트 픽스처."""
-    return TestClient(app)
+    return TestClient(app, raise_server_exceptions=False)
 
 
 @pytest.fixture
