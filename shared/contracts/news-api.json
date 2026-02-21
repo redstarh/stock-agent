@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.0",
+  "contract_version": "1.1",
   "provider": "StockNews",
   "consumer": "StockAgent",
   "base_url": "http://localhost:8001/api/v1",
@@ -29,7 +29,7 @@
       "method": "GET",
       "path": "/news/top",
       "params": {
-        "market": { "type": "string", "enum": ["KR", "US"], "required": false, "default": "KR" },
+        "market": { "type": "string", "enum": ["KR", "US"], "required": true },
         "limit": { "type": "int", "required": false, "default": 10 }
       },
       "response": [
@@ -55,6 +55,16 @@
         "direction": "string | null (up|down|neutral)",
         "confidence": "float | null (0.0-1.0)",
         "based_on_days": "int"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "auth_required": false,
+      "response": {
+        "status": "string (ok|degraded|error)",
+        "version": "string | null",
+        "services": "object | null"
       }
     }
   ],

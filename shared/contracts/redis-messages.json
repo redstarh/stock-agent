@@ -1,11 +1,13 @@
 {
-  "contract_version": "1.0",
+  "contract_version": "1.1",
   "transport": "Redis Pub/Sub",
   "publisher": "StockNews (app/core/pubsub.py)",
   "subscriber": "StockAgent (backend/src/core/news_subscriber.py)",
   "channels": {
     "breaking_news": {
       "description": "High-impact news events (score >= threshold)",
+      "actual_channel_pattern": "news_breaking_{market}",
+      "actual_channels": ["news_breaking_kr", "news_breaking_us"],
       "trigger_threshold": 80.0,
       "payload": {
         "type": {
@@ -23,11 +25,12 @@
           "required": true,
           "description": "News headline"
         },
-        "score": {
+        "news_score": {
           "type": "float",
           "range": [0, 100],
           "required": true,
-          "description": "News impact score"
+          "description": "News impact score",
+          "_migration_note": "Changed from 'score' to 'news_score' in v1.1"
         },
         "sentiment": {
           "type": "float",
@@ -39,15 +42,33 @@
           "type": "string",
           "enum": ["KR", "US"],
           "required": true
+        },
+        "stock_name": {
+          "type": "string",
+          "required": false,
+          "description": "Stock name (optional)"
+        },
+        "theme": {
+          "type": "string",
+          "required": false,
+          "description": "News theme (optional)"
+        },
+        "published_at": {
+          "type": "string",
+          "required": false,
+          "description": "ISO format publish time (optional)"
         }
       },
       "example": {
         "type": "breaking_news",
         "stock_code": "005930",
+        "stock_name": "삼성전자",
         "title": "삼성전자 4분기 어닝 서프라이즈",
-        "score": 85.5,
+        "news_score": 85.5,
         "sentiment": 0.8,
-        "market": "KR"
+        "market": "KR",
+        "theme": "반도체",
+        "published_at": "2024-01-15T09:00:00"
       }
     }
   },
