@@ -9,6 +9,11 @@ from app.core.auth import verify_api_key
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.limiter import limiter
+from app.schemas.collect import (
+    CollectionQualityResponse,
+    QualitySummary,
+    SourceQualityStats,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -215,3 +220,18 @@ async def reclassify_themes(
         "total": len(news_list),
         "changed": reclassified,
     }
+
+
+@router.get("/quality", response_model=CollectionQualityResponse)
+@limiter.limit("60/minute")
+async def get_collection_quality(request: Request, response: Response):
+    """소스별 수집 품질 메트릭 조회."""
+    from app.collectors.quality_tracker import tracker
+
+    summary = tracker.get_summary()
+    sources = tracker.get_all_stats()
+
+    return CollectionQualityResponse(
+        summary=QualitySummary(**summary),
+        sources={k: SourceQualityStats(**v) for k, v in sources.items()},
+    )

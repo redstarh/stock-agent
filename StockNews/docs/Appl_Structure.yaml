@@ -1,7 +1,7 @@
 # StockNews Application Structure
 # Single Source of Truth for project architecture
 # Update this file when modules/packages/pages are added, deleted, or moved
-# Last updated: 2026-02-22 (v3.1 — streaming pipeline, unified LLM, fast-path breaking news)
+# Last updated: 2026-02-22 (v3.2 — collection feedback loop with quality tracker)
 
 project:
   name: StockNews
@@ -47,7 +47,7 @@ backend:
         - name: "themes.py"
           description: "Theme list and strength ranking endpoints"
         - name: "collect.py"
-          description: "Manual trigger for KR/US news collection"
+          description: "Manual trigger for KR/US news collection, quality metrics endpoint (GET /collect/quality)"
         - name: "prediction.py"
           description: "ML prediction endpoints"
         - name: "prediction_context.py"
@@ -123,7 +123,9 @@ backend:
         - name: "yfinance_middleware.py"
           description: "yFinance data bridge"
         - name: "pipeline.py"
-          description: "Streaming pipeline: per-item async (scrape→analyze→score→save→publish) with Semaphore(10), fast-path keyword breaking news, unified LLM analyzer"
+          description: "Streaming pipeline: per-item async (scrape→analyze→score→save→publish) with Semaphore(10), fast-path keyword breaking news, unified LLM analyzer, quality tracking"
+        - name: "quality_tracker.py"
+          description: "In-memory rolling window quality tracker for per-source pipeline metrics (scrape success rate, LLM confidence, sentiment distribution, score stats). Thread-safe with 100-item window per source."
         - name: "scheduler.py"
           description: "APScheduler jobs — KR merged (Naver+RSS→single pipeline), DART, US(Finnhub). Loads queries from scope"
         - name: "verification_scheduler.py"
@@ -228,6 +230,8 @@ backend:
           description: "Training API schemas"
         - name: "verification.py"
           description: "Verification API schemas"
+        - name: "collect.py"
+          description: "Collection quality monitoring schemas (SourceQualityStats, QualitySummary, CollectionQualityResponse)"
         - name: "pubsub.py"
           description: "Redis Pub/Sub message schemas (BreakingNewsMessage, ScoreUpdateMessage)"
 

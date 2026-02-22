@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
+from app.collectors.quality_tracker import ItemResult, tracker
 from app.core.config import settings
 from app.models.news_event import NewsEvent
 from app.processing.article_scraper import ArticleScraper
@@ -256,6 +257,17 @@ async def _process_single_item(
             db.add(event)
             db.flush()
 
+            # Quality tracking
+            tracker.record(ItemResult(
+                source=p["source"],
+                market=market,
+                scrape_ok=body is not None,
+                llm_confidence=analysis.get("confidence", 0.0),
+                sentiment=sentiment,
+                news_score=news_score,
+                timestamp=datetime.now(UTC),
+            ))
+
             if redis_client:
                 from app.core.pubsub import publish_news_event as pub_event
                 pub_event(redis_client, event, news_score)
@@ -264,6 +276,15 @@ async def _process_single_item(
 
         except Exception as e:
             logger.warning("Pipeline save failed: %s — %s", p["title"][:50], e)
+            tracker.record(ItemResult(
+                source=p["source"],
+                market=market,
+                scrape_ok=body is not None,
+                llm_confidence=analysis.get("confidence", 0.0),
+                sentiment=analysis.get("sentiment", "neutral"),
+                news_score=0.0,
+                timestamp=datetime.now(UTC),
+            ))
             return False
 
 
