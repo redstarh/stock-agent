@@ -1,0 +1,584 @@
+# StockNews Failure Patterns Registry
+# 파이프라인·인프라·외부 API 오류 패턴 분석 및 복구 전략
+# Last updated: 2026-02-22
+
+# ── 심각도 정의 ──────────────────────────────────────────────────
+# CRITICAL: 서비스 중단 또는 데이터 무결성 위협
+# WARNING:  기능 저하, 자동 복구 가능
+# INFO:     정상 범위 내 예외, 로깅만
+
+# ── 빈도 정의 ────────────────────────────────────────────────────
+# FREQUENT:   일 수회 이상
+# OCCASIONAL: 주 수회
+# RARE:       월 1회 미만
+
+---
+
+categories:
+
+  # ════════════════════════════════════════════════════════════════
+  # 1. COLLECTOR FAILURES (뉴스 수집 실패)
+  # ════════════════════════════════════════════════════════════════
+  collectors:
+    description: "외부 소스(Naver, DART, Finnhub, RSS)에서 뉴스 수집 시 발생하는 오류"
+
+    patterns:
+      - id: COL-001
+        name: "HTTP 요청 실패"
+        files:
+          - "app/collectors/naver.py:56-64"
+          - "app/collectors/dart.py"
+          - "app/collectors/finnhub.py:71-76,127-132"
+          - "app/collectors/newsapi.py:78-84"
+          - "app/collectors/rss.py:30-32"
+        exceptions: ["httpx.HTTPStatusError", "httpx.RequestError"]
+        causes:
+          - "Connection timeout / DNS resolution failure"
+          - "HTTP 429 Too Many Requests (rate limit)"
+          - "HTTP 401/403 인증 실패"
+          - "HTTP 500+ 서버 오류"
+        recovery: "Retry 3회 (exponential backoff: base_delay * 2^attempt), 실패 시 빈 리스트 반환"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "해당 소스 뉴스 수집 누락, 다음 스케줄 간격에 재시도"
+
+      - id: COL-002
+        name: "API 키 미설정"
+        files:
+          - "app/collectors/finnhub.py:32-34"
+          - "app/collectors/newsapi.py:39-41"
+        exceptions: []
+        causes: ["환경변수 FINNHUB_API_KEY 또는 NEWSAPI_KEY 미설정"]
+        recovery: "logger.warning → 빈 리스트 반환, 해당 소스 수집 건너뜀"
+        severity: WARNING
+        frequency: RARE
+        impact: "해당 소스 수집 전체 비활성화"
+
+      - id: COL-003
+        name: "RSS XML 파싱 실패"
+        files: ["app/collectors/rss.py:36-40"]
+        exceptions: ["xml.etree.ElementTree.ParseError"]
+        causes: ["Malformed XML", "인코딩 오류", "피드 구조 변경"]
+        recovery: "빈 리스트 반환"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "해당 RSS 피드 뉴스 누락"
+
+      - id: COL-004
+        name: "날짜 파싱 실패"
+        files: ["app/collectors/dart.py:68-70"]
+        exceptions: ["ValueError"]
+        causes: ["DART API 응답의 날짜 형식 변경 (expected: %Y%m%d)"]
+        recovery: "None 반환 → pipeline에서 datetime.now(UTC) 대체"
+        severity: INFO
+        frequency: RARE
+        impact: "뉴스 발행 시간 부정확 (recency 점수 영향)"
+
+  # ════════════════════════════════════════════════════════════════
+  # 2. PIPELINE FAILURES (파이프라인 처리 실패)
+  # ════════════════════════════════════════════════════════════════
+  pipeline:
+    description: "수집→스크래핑→분석→저장→발행 파이프라인 각 단계 오류"
+
+    patterns:
+      - id: PIP-001
+        name: "스크래핑 실패"
+        files: ["app/collectors/pipeline.py:197-204"]
+        exceptions: ["Exception (generic)"]
+        causes:
+          - "대상 페이지 구조 변경 (CSS selector 불일치)"
+          - "네트워크 타임아웃"
+          - "JavaScript 렌더링 필요 페이지"
+          - "robots.txt 차단 / 403"
+        recovery: "body=None 설정, 제목만으로 LLM 분석 계속"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "본문 없이 제목만 분석 → 분석 품질 저하 (confidence↓)"
+
+      - id: PIP-002
+        name: "LLM 분석 실패"
+        files: ["app/collectors/pipeline.py:206-218"]
+        exceptions: ["Exception (generic, wraps RuntimeError from llm.py)"]
+        causes:
+          - "Bedrock/OpenAI API rate limit"
+          - "LLM 서비스 일시 장애"
+          - "응답 타임아웃 (30s+)"
+          - "JSON 파싱 실패 (LLM 포맷 불일치)"
+        recovery: "기본값 반환: sentiment=neutral, confidence=0.0, themes=[], summary=''"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "뉴스 저장되지만 감성/테마 분류 부정확 → neutral_ratio 증가"
+
+      - id: PIP-003
+        name: "저장/스코어링 실패"
+        files: ["app/collectors/pipeline.py:220-288"]
+        exceptions: ["Exception (generic)"]
+        causes:
+          - "DB constraint violation (중복 URL)"
+          - "DB 연결 끊김"
+          - "타입 오류 (None 값 처리)"
+        recovery: "logger.warning, quality_tracker에 실패 기록, return False"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "해당 뉴스 아이템 유실, 다른 아이템은 정상 처리"
+
+      - id: PIP-004
+        name: "Frequency 쿼리 실패"
+        files: ["app/collectors/pipeline.py:99-108"]
+        exceptions: ["Exception (generic)"]
+        causes: ["DB 연결 문제", "쿼리 타임아웃"]
+        recovery: "기본값 1 반환 (frequency 점수 최소)"
+        severity: WARNING
+        frequency: RARE
+        impact: "frequency 스코어 부정확 → news_score 왜곡 가능"
+
+      - id: PIP-005
+        name: "Fast-path 속보 발행 실패"
+        files: ["app/collectors/pipeline.py:176-194"]
+        exceptions: []
+        causes: ["Redis 미연결 (redis_client=None)", "stock_code 매핑 실패"]
+        recovery: "속보 발행 건너뜀, 정상 파이프라인 계속"
+        severity: INFO
+        frequency: OCCASIONAL
+        impact: "속보가 StockAgent에 지연 도착 (정규 pubsub 통해 전달)"
+
+  # ════════════════════════════════════════════════════════════════
+  # 3. LLM/NLP FAILURES (AI 분석 실패)
+  # ════════════════════════════════════════════════════════════════
+  llm_nlp:
+    description: "LLM(Bedrock/OpenAI) 호출 및 NLP 처리 오류"
+
+    patterns:
+      - id: LLM-001
+        name: "Bedrock Claude API 호출 실패"
+        files: ["app/core/llm.py:75-77"]
+        exceptions: ["RuntimeError (wrapped from boto3 exceptions)"]
+        causes:
+          - "Rate limit exceeded (ThrottlingException)"
+          - "AccessDeniedException (IAM 권한 부족)"
+          - "ModelNotReadyException (모델 배포 중)"
+          - "네트워크 타임아웃"
+        recovery: "RuntimeError raise → 호출자에서 기본값 처리"
+        severity: CRITICAL
+        frequency: OCCASIONAL
+        impact: "모든 LLM 기반 기능 중단 (감성분석, 요약, 테마분류, 예측)"
+
+      - id: LLM-002
+        name: "LLM JSON 응답 파싱 실패"
+        files:
+          - "app/processing/unified_analyzer.py:162-164"
+          - "app/processing/llm_predictor.py:259-261"
+          - "app/processing/sentiment.py:100-102"
+        exceptions: ["json.JSONDecodeError", "KeyError", "TypeError"]
+        causes:
+          - "LLM이 비정형 텍스트 반환 (JSON 대신 마크다운 등)"
+          - "응답 필드 누락 또는 타입 불일치"
+          - "LLM hallucination (예: 잘못된 JSON 구조)"
+        recovery: "기본 neutral 결과 반환 (confidence=0.0)"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "분석 품질 저하 → quality_tracker의 neutral_ratio, avg_confidence로 모니터링 가능"
+
+      - id: LLM-003
+        name: "요약 생성 실패"
+        files: ["app/processing/summary.py:48-50"]
+        exceptions: ["Exception (generic)"]
+        causes: ["LLM 호출 실패", "입력 토큰 초과"]
+        recovery: "빈 문자열 반환"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "뉴스 요약 없음 (UI에서 빈 요약 표시)"
+
+      - id: LLM-004
+        name: "Cross-market 분석 실패"
+        files: ["app/processing/cross_market.py:51-53"]
+        exceptions: ["Exception (generic)", "json.JSONDecodeError"]
+        causes: ["LLM 호출 실패", "US 뉴스의 한국 시장 영향 분석 불가"]
+        recovery: "빈 리스트 반환 (kr_impact_themes=[])"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "US→KR 시장 영향 분석 누락"
+
+  # ════════════════════════════════════════════════════════════════
+  # 4. REDIS FAILURES (Redis 연결 및 발행 오류)
+  # ════════════════════════════════════════════════════════════════
+  redis:
+    description: "Redis Pub/Sub 및 캐시 관련 오류"
+
+    patterns:
+      - id: RED-001
+        name: "Redis 연결 실패"
+        files: ["app/collectors/pipeline.py:111-120"]
+        exceptions: ["Exception (generic, wraps redis.ConnectionError)"]
+        causes:
+          - "Redis 서버 미실행"
+          - "연결 타임아웃"
+          - "AUTH 인증 실패"
+          - "네트워크 방화벽"
+        recovery: "redis_client=None 반환, pub/sub 전체 건너뜀"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "속보 미발행 → StockAgent에 실시간 알림 불가 (REST API는 정상)"
+
+      - id: RED-002
+        name: "메시지 발행 실패"
+        files: ["app/core/pubsub.py:81-87"]
+        exceptions: ["Exception (generic)"]
+        causes: ["Redis 연결 끊김 (중간 장애)", "메시지 직렬화 오류"]
+        recovery: "logger.error → return False, 뉴스는 DB에 이미 저장됨"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "개별 속보 메시지 유실"
+
+      - id: RED-003
+        name: "Pydantic 메시지 검증 실패"
+        files: ["app/core/pubsub.py:65-79"]
+        exceptions: ["pydantic.ValidationError"]
+        causes: ["메시지 필드 누락 또는 타입 불일치"]
+        recovery: "logger.error → return False"
+        severity: WARNING
+        frequency: RARE
+        impact: "메시지 발행 건너뜀"
+
+      - id: RED-004
+        name: "구독 리스너 오류"
+        files: ["app/core/pubsub.py:117-151"]
+        exceptions: ["json.JSONDecodeError", "pydantic.ValidationError", "Exception"]
+        causes:
+          - "잘못된 JSON 메시지 수신"
+          - "메시지 스키마 불일치 (버전 차이)"
+          - "콜백 함수 예외"
+          - "Redis 연결 끊김"
+        recovery: "개별 메시지 오류 → 로그 후 계속 리스닝, 연결 끊김 → graceful close"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "일부 메시지 처리 실패, 리스너는 계속 동작"
+
+  # ════════════════════════════════════════════════════════════════
+  # 5. DATABASE FAILURES (데이터베이스 오류)
+  # ════════════════════════════════════════════════════════════════
+  database:
+    description: "SQLAlchemy ORM 및 DB 연결 관련 오류"
+
+    patterns:
+      - id: DB-001
+        name: "Health check DB 연결 실패"
+        files: ["app/api/health.py:19-25"]
+        exceptions: ["Exception (generic)"]
+        causes: ["DB 서버 다운", "연결 풀 소진", "네트워크 오류"]
+        recovery: "status=degraded 반환, 서비스는 계속 실행"
+        severity: WARNING
+        frequency: RARE
+        impact: "Health check가 degraded 보고 → 모니터링 알림"
+
+      - id: DB-002
+        name: "스케줄러 DB 세션 오류"
+        files:
+          - "app/collectors/scheduler.py:85-90"
+          - "app/collectors/scheduler.py:115-120"
+          - "app/collectors/scheduler.py:145-150"
+          - "app/collectors/scheduler.py:194-199"
+        exceptions: ["Exception (generic)"]
+        causes: ["세션 타임아웃", "연결 풀 부족", "트랜잭션 교착"]
+        recovery: "finally 블록에서 세션 close, 다음 스케줄에 재시도"
+        severity: WARNING
+        frequency: RARE
+        impact: "해당 수집 주기 데이터 유실"
+
+  # ════════════════════════════════════════════════════════════════
+  # 6. SCHEDULER FAILURES (스케줄러 작업 실패)
+  # ════════════════════════════════════════════════════════════════
+  scheduler:
+    description: "APScheduler 백그라운드 작업 실행 오류"
+
+    patterns:
+      - id: SCH-001
+        name: "수집 작업 전체 실패"
+        files:
+          - "app/collectors/scheduler.py:92-95"
+          - "app/collectors/scheduler.py:122-125"
+          - "app/collectors/scheduler.py:152-155"
+          - "app/collectors/scheduler.py:201-204"
+        exceptions: ["Exception (generic)"]
+        causes:
+          - "네트워크 전체 장애"
+          - "asyncio.run() 이벤트 루프 오류"
+          - "LLM API 장시간 장애"
+        recovery: "logger.error, 작업 실패 → 스케줄러는 계속 동작, 다음 interval에 재시도"
+        severity: ERROR
+        frequency: OCCASIONAL
+        impact: |
+          KR: 5분 간격 → 최대 5분 데이터 공백
+          US: 15분 간격 → 최대 15분 데이터 공백
+          DART: 10분 간격 → 최대 10분 공시 누락
+
+      - id: SCH-002
+        name: "검증 작업 실패"
+        files:
+          - "app/collectors/verification_scheduler.py:44-47"
+          - "app/collectors/verification_scheduler.py:78-81"
+        exceptions: ["Exception (generic)"]
+        causes: ["yfinance 타임아웃", "DB 오류", "모델 로딩 실패"]
+        recovery: "logger.error, 다음 스케줄에 재시도"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "예측 검증 지연 (정확도 메트릭 업데이트 지연)"
+
+  # ════════════════════════════════════════════════════════════════
+  # 7. VERIFICATION & TRAINING FAILURES (검증/학습 실패)
+  # ════════════════════════════════════════════════════════════════
+  verification_training:
+    description: "예측 검증 및 ML 학습 파이프라인 오류"
+
+    patterns:
+      - id: VER-001
+        name: "주가 데이터 수집 실패"
+        files:
+          - "app/processing/verification_engine.py:134-136"
+          - "app/collectors/price_collector.py:75-77"
+        exceptions: ["Exception (generic)"]
+        causes:
+          - "yfinance API 타임아웃"
+          - "유효하지 않은 티커 (상장폐지 등)"
+          - "API rate limit"
+        recovery: "해당 종목 건너뜀, 부분 성공 허용"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "일부 종목 검증 누락 → 정확도 메트릭 불완전"
+
+      - id: VER-002
+        name: "학습 스냅샷 빌드 실패"
+        files: ["app/processing/verification_engine.py:174-192"]
+        exceptions: ["Exception (generic)"]
+        causes: ["피처 계산 오류", "데이터 정렬 실패", "메모리 부족"]
+        recovery: "logger.warning → 검증은 계속 진행"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "학습 데이터 업데이트 지연"
+
+      - id: VER-003
+        name: "검증 실행 전체 실패"
+        files: ["app/processing/verification_engine.py:213-218"]
+        exceptions: ["Exception (generic)"]
+        causes: ["이전 단계의 연쇄 실패", "DB 커밋 오류"]
+        recovery: "run status='failed' 기록, 예외 raise → 스케줄러에서 처리"
+        severity: ERROR
+        frequency: RARE
+        impact: "검증 결과 미생성 → 대시보드에 빈 데이터"
+
+  # ════════════════════════════════════════════════════════════════
+  # 8. API ENDPOINT FAILURES (REST API 오류)
+  # ════════════════════════════════════════════════════════════════
+  api:
+    description: "FastAPI 엔드포인트 처리 오류"
+
+    patterns:
+      - id: API-001
+        name: "전역 예외 핸들러"
+        files: ["app/main.py:108-120"]
+        exceptions: ["Exception (unhandled)"]
+        causes: ["예상치 못한 런타임 오류"]
+        recovery: "500 응답 + 에러 로깅, Sentry 전송"
+        severity: CRITICAL
+        frequency: RARE
+        impact: "해당 요청 실패, 서비스는 계속 동작"
+
+      - id: API-002
+        name: "WebSocket 연결 한도 초과"
+        files: ["app/api/websocket.py:25-30,78-81"]
+        exceptions: []
+        causes: ["동시 접속 100개 초과"]
+        recovery: "에러 메시지 전송 후 연결 종료"
+        severity: WARNING
+        frequency: RARE
+        impact: "신규 WebSocket 클라이언트 접속 거부"
+
+      - id: API-003
+        name: "WebSocket 통신 오류"
+        files: ["app/api/websocket.py:99-100"]
+        exceptions: ["Exception (generic)"]
+        causes: ["클라이언트 비정상 종료", "메시지 파싱 오류"]
+        recovery: "logger.warning → finally에서 연결 정리"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "해당 클라이언트 연결 종료"
+
+      - id: API-004
+        name: "수집 API 개별 쿼리 실패"
+        files: ["app/api/collect.py:55-59"]
+        exceptions: ["Exception (generic)"]
+        causes: ["특정 종목의 수집 실패 (네트워크, 소스 변경)"]
+        recovery: "해당 쿼리 건너뛰고 나머지 계속"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "일부 종목 뉴스 누락"
+
+  # ════════════════════════════════════════════════════════════════
+  # 9. CONFIGURATION FAILURES (설정 오류)
+  # ════════════════════════════════════════════════════════════════
+  configuration:
+    description: "환경변수, 시크릿, 설정 파일 관련 오류"
+
+    patterns:
+      - id: CFG-001
+        name: "환경변수 미설정"
+        files: ["app/core/config.py:29-62"]
+        exceptions: []
+        causes: [".env 파일 누락", "환경변수 이름 오타"]
+        recovery: "Pydantic 기본값 사용 (빈 문자열, 기본 포트 등)"
+        severity: WARNING
+        frequency: RARE
+        impact: "API 키 없으면 해당 소스 비활성화, DB URL 없으면 서비스 시작 실패"
+
+      - id: CFG-002
+        name: "Secrets Manager 초기화 실패"
+        files: ["app/core/config.py:140-143"]
+        exceptions: ["Exception (generic)"]
+        causes: ["AWS 자격증명 미설정", "네트워크 오류", "IAM 권한 부족"]
+        recovery: "print warning → 환경변수/기본값 fallback"
+        severity: WARNING
+        frequency: RARE
+        impact: "시크릿 매니저 대신 로컬 환경변수 사용"
+
+      - id: CFG-003
+        name: "Scope YAML 로딩 실패"
+        files: ["app/core/scope_loader.py:39-50"]
+        exceptions: ["FileNotFoundError", "yaml.YAMLError"]
+        causes: ["NewsCollectionScope.md 파일 없음", "YAML 문법 오류"]
+        recovery: "빈 dict 반환 → 각 모듈이 하드코딩 기본값 사용"
+        severity: WARNING
+        frequency: RARE
+        impact: "수집 쿼리, 스코어링 가중치, 테마 목록이 기본값으로 동작"
+
+  # ════════════════════════════════════════════════════════════════
+  # 10. CI/CD FAILURES (빌드/배포 오류)
+  # ════════════════════════════════════════════════════════════════
+  ci_cd:
+    description: "GitHub Actions CI 파이프라인 오류"
+
+    patterns:
+      - id: CI-001
+        name: "백엔드 테스트 실패"
+        files: [".github/workflows/test.yml (backend-test job)"]
+        causes: ["코드 변경에 의한 테스트 깨짐", "외부 API mock 누락"]
+        recovery: "PR 머지 차단 → 수정 후 재푸시"
+        severity: CRITICAL
+        frequency: OCCASIONAL
+        impact: "머지 불가"
+
+      - id: CI-002
+        name: "프론트엔드 타입체크 실패"
+        files: [".github/workflows/test.yml (frontend-unit-test job, tsc -b)"]
+        causes: ["타입 불일치", "import 경로 오류", "새 필드 미반영"]
+        recovery: "PR 머지 차단 → 타입 수정"
+        severity: CRITICAL
+        frequency: OCCASIONAL
+        impact: "머지 불가"
+
+      - id: CI-003
+        name: "E2E 테스트 실패"
+        files: [".github/workflows/test.yml (frontend-e2e-test job)"]
+        causes:
+          - "Playwright 타이밍 이슈 (flaky)"
+          - "DOM 구조 변경"
+          - "테스트 서버 시작 실패"
+        recovery: "Playwright report 업로드, 재실행으로 flaky 확인"
+        severity: WARNING
+        frequency: OCCASIONAL
+        impact: "머지 차단 (flaky면 재실행으로 해결)"
+
+      - id: CI-004
+        name: "Docker 빌드 실패"
+        files: [".github/workflows/test.yml (docker-build job)"]
+        causes: ["Dockerfile 문법 오류", "의존성 설치 실패", "빌드 캐시 손상"]
+        recovery: "빌드 로그 확인 후 수정"
+        severity: WARNING
+        frequency: RARE
+        impact: "이미지 빌드 불가 (배포 차단)"
+
+# ════════════════════════════════════════════════════════════════
+# RECOVERY PATTERN SUMMARY (복구 전략 요약)
+# ════════════════════════════════════════════════════════════════
+recovery_patterns:
+  - pattern: "Retry with Exponential Backoff"
+    used_by: ["COL-001"]
+    config: "3회 재시도, base_delay * 2^attempt"
+
+  - pattern: "Default/Neutral Fallback"
+    used_by: ["PIP-001", "PIP-002", "PIP-004", "LLM-002", "LLM-003", "LLM-004"]
+    config: "sentiment=neutral, confidence=0.0, 빈 리스트/문자열"
+
+  - pattern: "Skip and Continue"
+    used_by: ["COL-002", "PIP-003", "PIP-005", "RED-001", "RED-002", "API-004"]
+    config: "실패 항목 건너뛰고 나머지 정상 처리"
+
+  - pattern: "Graceful Degradation"
+    used_by: ["DB-001", "CFG-002", "CFG-003"]
+    config: "기능 축소 동작 (Redis 없이, Secrets 없이 등)"
+
+  - pattern: "Next Interval Retry"
+    used_by: ["SCH-001", "SCH-002", "DB-002"]
+    config: "현재 실패 수용, 다음 스케줄 간격에 자동 재시도"
+
+  - pattern: "Partial Success"
+    used_by: ["VER-001", "VER-002"]
+    config: "일부 성공 허용, asyncio.gather(return_exceptions=True)"
+
+# ════════════════════════════════════════════════════════════════
+# CRITICAL PATH BOTTLENECKS (핵심 병목 지점)
+# ════════════════════════════════════════════════════════════════
+critical_paths:
+
+  - name: "LLM API 가용성"
+    related_patterns: ["LLM-001", "PIP-002"]
+    impact: "전체 분석 파이프라인 중단"
+    latency: "건당 30-60초 (Bedrock timeout 30s)"
+    mitigation: "quality_tracker의 avg_confidence, neutral_ratio로 조기 감지"
+
+  - name: "Redis 가용성"
+    related_patterns: ["RED-001", "RED-002", "PIP-005"]
+    impact: "실시간 속보 발행 중단 (DB 저장은 정상)"
+    mitigation: "health check에서 Redis 상태 모니터링"
+
+  - name: "yfinance 가격 데이터"
+    related_patterns: ["VER-001"]
+    impact: "예측 검증 불가"
+    latency: "대량 배치 시 타임아웃 빈발"
+    mitigation: "배치 크기 제한, 부분 성공 허용"
+
+  - name: "스케줄러 작업 격리"
+    related_patterns: ["SCH-001"]
+    impact: "실패 시 즉시 재시도 없음 (다음 interval 대기)"
+    mitigation: |
+      KR: 5분 간격으로 빠른 복구
+      US: 15분 간격으로 상대적 지연
+      quality_tracker로 수집률 모니터링
+
+# ════════════════════════════════════════════════════════════════
+# MONITORING TARGETS (모니터링 대상)
+# ════════════════════════════════════════════════════════════════
+monitoring_targets:
+  - metric: "소스별 scrape_success_rate"
+    endpoint: "GET /api/v1/collect/quality"
+    threshold: "< 0.7이면 소스 점검 필요"
+    related: ["PIP-001", "COL-001"]
+
+  - metric: "소스별 neutral_ratio"
+    endpoint: "GET /api/v1/collect/quality"
+    threshold: "> 0.6이면 LLM 분석 품질 점검"
+    related: ["LLM-002", "PIP-002"]
+
+  - metric: "소스별 avg_confidence"
+    endpoint: "GET /api/v1/collect/quality"
+    threshold: "< 0.5이면 LLM 응답 품질 저하"
+    related: ["LLM-001", "LLM-002"]
+
+  - metric: "Redis 연결 상태"
+    endpoint: "GET /health"
+    threshold: "unavailable → 속보 기능 비활성화"
+    related: ["RED-001"]
+
+  - metric: "DB 연결 상태"
+    endpoint: "GET /health"
+    threshold: "error → 전체 서비스 degraded"
+    related: ["DB-001"]
