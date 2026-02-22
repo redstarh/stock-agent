@@ -24,8 +24,8 @@ export default function ThemeStrengthChart({ data }: ThemeStrengthChartProps) {
         <XAxis type="number" domain={[0, 100]} />
         <YAxis type="category" dataKey="theme" width={70} tick={{ fontSize: 12 }} />
         <Tooltip
-          formatter={(value: number) => [`${value.toFixed(1)}`, '강도']}
-          labelFormatter={(label: string) => `테마: ${label}`}
+          formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)}`, '강도']}
+          labelFormatter={(label: React.ReactNode) => `테마: ${label}`}
         />
         <Bar dataKey="rise_index" radius={[0, 4, 4, 0]} isAnimationActive={false}>
           {data.map((entry, index) => (

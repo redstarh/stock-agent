@@ -74,8 +74,8 @@ export default function SystemComparisonPage() {
   const compareByStock = useAdvanRunByStock(compareRunId);
   const compareByTheme = useAdvanRunByTheme(compareRunId);
 
-  const hasAdvanRun = selectedRun !== null && advanDetail.data;
-  const hasCompareRun = compareRunId !== null && compareDetail.data;
+  const hasAdvanRun = selectedRun !== null && !!advanDetail.data;
+  const hasCompareRun = compareRunId !== null && !!compareDetail.data;
 
   return (
     <div className="space-y-6">
@@ -635,8 +635,8 @@ function ThemeComparisonSection({
                 />
                 <YAxis domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} />
                 <Tooltip
-                  formatter={(value: number | string) =>
-                    value !== null ? `${Number(value).toFixed(1)}%` : '데이터 없음'
+                  formatter={(value: string | number | undefined) =>
+                    value != null ? `${Number(value).toFixed(1)}%` : '데이터 없음'
                   }
                 />
                 <Legend />
@@ -741,7 +741,7 @@ function AdvanRunComparisonSection({
       label: '전체 정확도',
       primary: primaryRun.run.accuracy_rate * 100,
       compare: compareRun.run.accuracy_rate * 100,
-      format: (v: number) => `${v.toFixed(1)}%`,
+      format: (v: number | null) => v != null ? `${v.toFixed(1)}%` : '-',
       higherBetter: true,
     },
     {
@@ -769,14 +769,14 @@ function AdvanRunComparisonSection({
       label: '총 예측 수',
       primary: primaryRun.run.total_predictions,
       compare: compareRun.run.total_predictions,
-      format: (v: number) => v.toString(),
+      format: (v: number | null) => v != null ? v.toString() : '-',
       higherBetter: null,
     },
     {
       label: '기권 수',
       primary: primaryRun.run.abstain_count,
       compare: compareRun.run.abstain_count,
-      format: (v: number) => v.toString(),
+      format: (v: number | null) => v != null ? v.toString() : '-',
       higherBetter: null,
     },
   ];
@@ -870,7 +870,7 @@ function AdvanRunComparisonSection({
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="direction" />
               <YAxis domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} />
-              <Tooltip formatter={(value: number | string) => `${Number(value).toFixed(1)}%`} />
+              <Tooltip formatter={(value: string | number | undefined) => `${Number(value ?? 0).toFixed(1)}%`} />
               <Legend />
               <Bar
                 dataKey={`Run #${primaryRun.run.id}`}
