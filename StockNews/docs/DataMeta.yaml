@@ -1,0 +1,500 @@
+# StockNews Data Meta Documentation
+# Single Source of Truth for database schema, Redis, and data files
+# Update this file when tables/columns/indexes are added or changed,
+# when Redis channels/message formats change, or when data files are modified
+# Last updated: 2026-02-22
+
+database:
+  engine:
+    development: "SQLite (aiosqlite)"
+    production: "PostgreSQL (asyncpg)"
+  orm: "SQLAlchemy 2.0"
+  migration_tool: "Alembic"
+
+# ─── Core Tables (Phase 1-3) ───
+
+tables:
+  news_event:
+    description: "Core news items with sentiment and scoring"
+    model_file: "app/models/news_event.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "market", type: "String(5)", nullable: false, indexed: true, description: "KR or US" }
+      - { name: "stock_code", type: "String(20)", nullable: false, indexed: true }
+      - { name: "stock_name", type: "String(100)", nullable: true }
+      - { name: "title", type: "String(500)", nullable: false }
+      - { name: "summary", type: "String(2000)", nullable: true }
+      - { name: "content", type: "String(5000)", nullable: true }
+      - { name: "sentiment", type: "String(10)", nullable: false, default: "neutral", description: "positive/neutral/negative" }
+      - { name: "sentiment_score", type: "Float", nullable: false, default: 0.0, description: "range: -1.0 ~ 1.0" }
+      - { name: "news_score", type: "Float", nullable: false, default: 0.0, description: "range: 0-100" }
+      - { name: "source", type: "String(50)", nullable: false, description: "naver, dart, finnhub, etc." }
+      - { name: "source_url", type: "String(1000)", nullable: true, unique: true }
+      - { name: "theme", type: "String(100)", nullable: true, description: "e.g. 실적, M&A" }
+      - { name: "kr_impact_themes", type: "String(500)", nullable: true, description: "comma-separated theme list" }
+      - { name: "is_disclosure", type: "Boolean", nullable: false, default: false, description: "DART disclosure flag" }
+      - { name: "published_at", type: "DateTime", nullable: true, description: "timezone-aware" }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+    indexes:
+      - { name: "ix_news_event_market", columns: ["market"] }
+      - { name: "ix_news_event_stock_code", columns: ["stock_code"] }
+      - { name: "ix_news_event_market_stock", columns: ["market", "stock_code"] }
+      - { name: "ix_news_event_published", columns: ["published_at"] }
+
+  theme_strength:
+    description: "Daily aggregated theme metrics"
+    model_file: "app/models/theme_strength.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "date", type: "Date", nullable: false, indexed: true }
+      - { name: "market", type: "String(5)", nullable: false, indexed: true }
+      - { name: "theme", type: "String(100)", nullable: false, indexed: true }
+      - { name: "strength_score", type: "Float", nullable: false, default: 0.0 }
+      - { name: "news_count", type: "Integer", nullable: false, default: 0 }
+      - { name: "sentiment_avg", type: "Float", nullable: false, default: 0.0 }
+    constraints:
+      - { type: "unique", name: "uq_theme_date_market", columns: ["date", "market", "theme"] }
+
+  stock_price:
+    description: "Daily stock price data"
+    model_file: "app/models/stock_price.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "stock_code", type: "String(20)", nullable: false, indexed: true }
+      - { name: "market", type: "String(5)", nullable: false }
+      - { name: "date", type: "Date", nullable: false }
+      - { name: "close_price", type: "Float", nullable: false }
+      - { name: "change_pct", type: "Float", nullable: false, default: 0.0 }
+      - { name: "volume", type: "Integer", nullable: false, default: 0 }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+    indexes:
+      - { name: "ix_stock_price_code_date", columns: ["stock_code", "date"], unique: true }
+
+# ─── ML & Prediction Tables (Phase 2-3) ───
+
+  ml_model:
+    description: "ML model registry and versioning"
+    model_file: "app/models/ml_model.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "model_name", type: "String(100)", nullable: false }
+      - { name: "model_version", type: "String(20)", nullable: false }
+      - { name: "model_type", type: "String(50)", nullable: false, description: "lightgbm or random_forest" }
+      - { name: "market", type: "String(5)", nullable: false }
+      - { name: "feature_tier", type: "Integer", nullable: false, description: "1, 2, or 3" }
+      - { name: "feature_list", type: "Text", nullable: false, description: "JSON array of feature names" }
+      - { name: "train_accuracy", type: "Float", nullable: true }
+      - { name: "test_accuracy", type: "Float", nullable: true }
+      - { name: "cv_accuracy", type: "Float", nullable: true }
+      - { name: "cv_std", type: "Float", nullable: true }
+      - { name: "train_samples", type: "Integer", nullable: true }
+      - { name: "test_samples", type: "Integer", nullable: true }
+      - { name: "train_start_date", type: "Date", nullable: true }
+      - { name: "train_end_date", type: "Date", nullable: true }
+      - { name: "is_active", type: "Boolean", nullable: false, default: false }
+      - { name: "model_path", type: "String(500)", nullable: true, description: "file path to .pkl" }
+      - { name: "model_checksum", type: "String(64)", nullable: true, description: "SHA-256 hash" }
+      - { name: "hyperparameters", type: "Text", nullable: true, description: "JSON object" }
+      - { name: "feature_importances", type: "Text", nullable: true, description: "JSON object" }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+    indexes:
+      - { name: "ix_ml_model_active", columns: ["is_active", "market"] }
+      - { name: "ix_ml_model_name_version", columns: ["model_name", "model_version", "market"], unique: true }
+
+  stock_training_data:
+    description: "Feature snapshots at prediction time for ML training"
+    model_file: "app/models/training.py"
+    columns:
+      # Identity
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "prediction_date", type: "Date", nullable: false, indexed: true }
+      - { name: "stock_code", type: "String(20)", nullable: false, indexed: true }
+      - { name: "stock_name", type: "String(100)", nullable: true }
+      - { name: "market", type: "String(5)", nullable: false, indexed: true }
+      # News Features (Tier 1)
+      - { name: "news_score", type: "Float", nullable: false, default: 0.0, description: "0-100" }
+      - { name: "sentiment_score", type: "Float", nullable: false, default: 0.0, description: "-1.0~1.0" }
+      - { name: "news_count", type: "Integer", nullable: false, default: 0 }
+      - { name: "news_count_3d", type: "Integer", nullable: false, default: 0 }
+      - { name: "avg_score_3d", type: "Float", nullable: false, default: 0.0 }
+      - { name: "disclosure_ratio", type: "Float", nullable: false, default: 0.0 }
+      - { name: "sentiment_trend", type: "Float", nullable: false, default: 0.0 }
+      - { name: "theme", type: "String(50)", nullable: true }
+      # Price Features (Tier 1-2)
+      - { name: "prev_close", type: "Float", nullable: true }
+      - { name: "prev_change_pct", type: "Float", nullable: true }
+      - { name: "prev_volume", type: "Integer", nullable: true }
+      - { name: "price_change_5d", type: "Float", nullable: true }
+      - { name: "volume_change_5d", type: "Float", nullable: true }
+      - { name: "ma5_ratio", type: "Float", nullable: true }
+      - { name: "ma20_ratio", type: "Float", nullable: true }
+      - { name: "volatility_5d", type: "Float", nullable: true }
+      - { name: "rsi_14", type: "Float", nullable: true }
+      - { name: "bb_position", type: "Float", nullable: true }
+      # Market Features (Tier 2-3)
+      - { name: "market_index_change", type: "Float", nullable: true }
+      - { name: "market_return", type: "Float", nullable: true }
+      - { name: "vix_change", type: "Float", nullable: true }
+      - { name: "usd_krw_change", type: "Float", nullable: true }
+      - { name: "has_earnings_disclosure", type: "Boolean", nullable: true, default: false }
+      - { name: "cross_theme_score", type: "Float", nullable: true, default: 0.0 }
+      - { name: "foreign_net_ratio", type: "Float", nullable: true }
+      - { name: "sector_index_change", type: "Float", nullable: true }
+      - { name: "day_of_week", type: "Integer", nullable: false, default: 0, description: "0-4 (Mon-Fri)" }
+      # Prediction Results
+      - { name: "predicted_direction", type: "String(10)", nullable: false, description: "up, down, neutral" }
+      - { name: "predicted_score", type: "Float", nullable: false, description: "0-100" }
+      - { name: "confidence", type: "Float", nullable: false, description: "0.0-1.0" }
+      # Actual Labels (updated after verification)
+      - { name: "actual_close", type: "Float", nullable: true }
+      - { name: "actual_change_pct", type: "Float", nullable: true }
+      - { name: "actual_direction", type: "String(10)", nullable: true }
+      - { name: "actual_volume", type: "Integer", nullable: true }
+      - { name: "is_correct", type: "Boolean", nullable: true }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+    indexes:
+      - { name: "idx_training_date_stock", columns: ["prediction_date", "stock_code"], unique: true }
+      - { name: "idx_training_market_date", columns: ["market", "prediction_date"] }
+      - { name: "idx_training_labels", columns: ["market", "prediction_date", "actual_direction"] }
+
+  daily_prediction_result:
+    description: "Individual stock prediction verification"
+    model_file: "app/models/verification.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "prediction_date", type: "Date", nullable: false, indexed: true }
+      - { name: "stock_code", type: "String(20)", nullable: false, indexed: true }
+      - { name: "stock_name", type: "String(100)", nullable: true }
+      - { name: "market", type: "String(5)", nullable: false, indexed: true }
+      - { name: "predicted_direction", type: "String(10)", nullable: false }
+      - { name: "predicted_score", type: "Float", nullable: false }
+      - { name: "confidence", type: "Float", nullable: false }
+      - { name: "news_count", type: "Integer", nullable: false, default: 0 }
+      - { name: "previous_close_price", type: "Float", nullable: true }
+      - { name: "actual_close_price", type: "Float", nullable: true }
+      - { name: "actual_change_pct", type: "Float", nullable: true }
+      - { name: "actual_open_price", type: "Float", nullable: true }
+      - { name: "actual_high_price", type: "Float", nullable: true }
+      - { name: "actual_low_price", type: "Float", nullable: true }
+      - { name: "actual_volume", type: "Integer", nullable: true }
+      - { name: "previous_volume", type: "Integer", nullable: true }
+      - { name: "actual_trading_value", type: "Float", nullable: true }
+      - { name: "actual_direction", type: "String(10)", nullable: true }
+      - { name: "is_correct", type: "Boolean", nullable: true }
+      - { name: "verified_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+      - { name: "error_message", type: "Text", nullable: true }
+    indexes:
+      - { name: "idx_prediction_date_stock", columns: ["prediction_date", "stock_code"] }
+      - { name: "idx_market_date", columns: ["market", "prediction_date"] }
+
+  theme_prediction_accuracy:
+    description: "Theme-level prediction accuracy aggregation"
+    model_file: "app/models/verification.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "prediction_date", type: "Date", nullable: false, indexed: true }
+      - { name: "theme", type: "String(50)", nullable: false, indexed: true }
+      - { name: "market", type: "String(5)", nullable: false, indexed: true }
+      - { name: "total_stocks", type: "Integer", nullable: false, default: 0 }
+      - { name: "correct_count", type: "Integer", nullable: false, default: 0 }
+      - { name: "accuracy_rate", type: "Float", nullable: false, default: 0.0 }
+      - { name: "avg_predicted_score", type: "Float", nullable: false, default: 0.0 }
+      - { name: "avg_actual_change_pct", type: "Float", nullable: true }
+      - { name: "rise_index_at_prediction", type: "Float", nullable: true }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+    indexes:
+      - { name: "idx_theme_date", columns: ["prediction_date", "theme"] }
+
+  verification_run_log:
+    description: "Track daily verification runs"
+    model_file: "app/models/verification.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "run_date", type: "Date", nullable: false, indexed: true }
+      - { name: "market", type: "String(5)", nullable: false }
+      - { name: "status", type: "String(20)", nullable: false, description: "pending/running/completed/failed" }
+      - { name: "stocks_verified", type: "Integer", nullable: false, default: 0 }
+      - { name: "stocks_failed", type: "Integer", nullable: false, default: 0 }
+      - { name: "duration_seconds", type: "Float", nullable: false, default: 0.0 }
+      - { name: "error_details", type: "Text", nullable: true }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+
+# ─── ADVAN Event-Based System (Phase 3+) ───
+
+  advan_event:
+    description: "Structured events extracted from news/DART"
+    model_file: "app/advan/models.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "source_news_id", type: "Integer", nullable: true, description: "FK to news_event.id" }
+      - { name: "ticker", type: "String(20)", nullable: false, indexed: true }
+      - { name: "stock_name", type: "String(100)", nullable: true }
+      - { name: "market", type: "String(5)", nullable: false, indexed: true }
+      - { name: "event_type", type: "String(50)", nullable: false, indexed: true, description: "실적, 수주, 증자, M&A, etc." }
+      - { name: "direction", type: "String(20)", nullable: false, description: "positive/negative/mixed/unknown" }
+      - { name: "magnitude", type: "Float", nullable: false, default: 0.0, description: "0-1 normalized" }
+      - { name: "magnitude_detail", type: "Text", nullable: true, description: "JSON: detailed magnitude features" }
+      - { name: "novelty", type: "Float", nullable: false, default: 0.5, description: "0-1 (newness)" }
+      - { name: "credibility", type: "Float", nullable: false, default: 0.5, description: "0-1 (DART=0.9, rumor=0.2)" }
+      - { name: "is_disclosure", type: "Boolean", nullable: false, default: false }
+      - { name: "title", type: "String(500)", nullable: false }
+      - { name: "summary", type: "String(2000)", nullable: true }
+      - { name: "source", type: "String(50)", nullable: false }
+      - { name: "confounders", type: "Text", nullable: true, description: "JSON array: concurrent market issues" }
+      - { name: "event_timestamp", type: "DateTime", nullable: false }
+      - { name: "is_after_market", type: "Boolean", nullable: false, default: false }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+    indexes:
+      - { name: "idx_advan_event_ticker_ts", columns: ["ticker", "event_timestamp"] }
+      - { name: "idx_advan_event_type_dir", columns: ["event_type", "direction"] }
+      - { name: "idx_advan_event_market_ts", columns: ["market", "event_timestamp"] }
+    event_types:
+      - "실적"
+      - "가이던스"
+      - "수주"
+      - "증자"
+      - "소송"
+      - "규제"
+      - "경영권"
+      - "자사주"
+      - "배당"
+      - "M&A"
+      - "리콜"
+      - "공급계약"
+      - "인수합병"
+      - "분할"
+      - "상장폐지"
+      - "기타"
+
+  advan_feature_daily:
+    description: "Daily market features for ADVAN predictions"
+    model_file: "app/advan/models.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "ticker", type: "String(20)", nullable: false }
+      - { name: "trade_date", type: "Date", nullable: false }
+      - { name: "market", type: "String(5)", nullable: false }
+      - { name: "ret_1d", type: "Float", nullable: true, description: "1-day return %" }
+      - { name: "ret_3d", type: "Float", nullable: true, description: "3-day return %" }
+      - { name: "ret_5d", type: "Float", nullable: true, description: "5-day return %" }
+      - { name: "volatility_20d", type: "Float", nullable: true }
+      - { name: "dollar_volume", type: "Float", nullable: true }
+      - { name: "beta", type: "Float", nullable: true }
+      - { name: "sector_ret", type: "Float", nullable: true }
+      - { name: "market_ret", type: "Float", nullable: true }
+      - { name: "close_price", type: "Float", nullable: true }
+      - { name: "volume", type: "Integer", nullable: true }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+    indexes:
+      - { name: "idx_advan_feature_ticker_date", columns: ["ticker", "trade_date"], unique: true }
+      - { name: "idx_advan_feature_market_date", columns: ["market", "trade_date"] }
+
+  advan_policy:
+    description: "Versioned prediction policies with event priors and thresholds"
+    model_file: "app/advan/models.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "name", type: "String(200)", nullable: false }
+      - { name: "version", type: "String(50)", nullable: false }
+      - { name: "description", type: "Text", nullable: true }
+      - { name: "is_active", type: "Boolean", nullable: false, default: false }
+      - { name: "event_priors", type: "Text", nullable: false, description: "JSON: event type weights" }
+      - { name: "thresholds", type: "Text", nullable: false, description: "JSON: decision thresholds" }
+      - { name: "template_config", type: "Text", nullable: false, description: "JSON: LLM template settings" }
+      - { name: "retrieval_config", type: "Text", nullable: false, description: "JSON: similar event retrieval config" }
+      - { name: "latest_brier", type: "Float", nullable: true }
+      - { name: "latest_accuracy", type: "Float", nullable: true }
+      - { name: "latest_calibration", type: "Float", nullable: true }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+      - { name: "updated_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+    indexes:
+      - { name: "idx_advan_policy_active", columns: ["is_active"] }
+      - { name: "idx_advan_policy_name", columns: ["name"] }
+    json_examples:
+      event_priors: '{"실적": 0.8, "수주": 0.6, "증자": 0.5}'
+      thresholds: '{"buy_p": 0.62, "sell_p": 0.62, "abstain_low": 0.4, "abstain_high": 0.6, "label_threshold_pct": 2.0, "stop_loss_pct": 5.0}'
+
+  advan_prediction:
+    description: "Individual event-based predictions"
+    model_file: "app/advan/models.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "run_id", type: "Integer", nullable: false, indexed: true, description: "FK to advan_simulation_run.id" }
+      - { name: "event_id", type: "Integer", nullable: true, description: "FK to advan_event.id" }
+      - { name: "policy_id", type: "Integer", nullable: false, description: "FK to advan_policy.id" }
+      - { name: "ticker", type: "String(20)", nullable: false }
+      - { name: "prediction_date", type: "Date", nullable: false }
+      - { name: "horizon", type: "Integer", nullable: false, default: 3, description: "T+N trading days" }
+      - { name: "prediction", type: "String(10)", nullable: false, description: "Up, Down, Flat, Abstain" }
+      - { name: "p_up", type: "Float", nullable: false, default: 0.0, description: "probability 0-1" }
+      - { name: "p_down", type: "Float", nullable: false, default: 0.0 }
+      - { name: "p_flat", type: "Float", nullable: false, default: 0.0 }
+      - { name: "trade_action", type: "String(10)", nullable: false, default: "skip", description: "buy/sell/hold/skip" }
+      - { name: "position_size", type: "Float", nullable: false, default: 0.0, description: "0-1" }
+      - { name: "top_drivers", type: "Text", nullable: true, description: "JSON array: reasoning factors" }
+      - { name: "invalidators", type: "Text", nullable: true, description: "JSON array: counter-factors" }
+      - { name: "reasoning", type: "Text", nullable: true, description: "LLM reasoning text" }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+    indexes:
+      - { name: "idx_advan_pred_run_date", columns: ["run_id", "prediction_date"] }
+      - { name: "idx_advan_pred_ticker_date", columns: ["ticker", "prediction_date"] }
+      - { name: "idx_advan_pred_policy", columns: ["policy_id"] }
+
+  advan_label:
+    description: "Realized returns and labels for predictions"
+    model_file: "app/advan/models.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "prediction_id", type: "Integer", nullable: false, indexed: true, description: "FK to advan_prediction.id" }
+      - { name: "ticker", type: "String(20)", nullable: false }
+      - { name: "prediction_date", type: "Date", nullable: false }
+      - { name: "horizon", type: "Integer", nullable: false }
+      - { name: "realized_ret", type: "Float", nullable: true, description: "realized return %" }
+      - { name: "excess_ret", type: "Float", nullable: true, description: "market-adjusted return" }
+      - { name: "label", type: "String(10)", nullable: true, description: "Up, Down, Flat (derived)" }
+      - { name: "is_correct", type: "Boolean", nullable: true }
+      - { name: "label_date", type: "Date", nullable: true }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+    indexes:
+      - { name: "idx_advan_label_pred", columns: ["prediction_id"], unique: true }
+      - { name: "idx_advan_label_ticker_date", columns: ["ticker", "prediction_date"] }
+
+  advan_simulation_run:
+    description: "Track simulation execution and aggregate metrics"
+    model_file: "app/advan/models.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "name", type: "String(200)", nullable: false }
+      - { name: "policy_id", type: "Integer", nullable: false, description: "FK to advan_policy.id" }
+      - { name: "market", type: "String(5)", nullable: false, indexed: true }
+      - { name: "horizon", type: "Integer", nullable: false, default: 3 }
+      - { name: "label_threshold_pct", type: "Float", nullable: false, default: 2.0 }
+      - { name: "date_from", type: "Date", nullable: false }
+      - { name: "date_to", type: "Date", nullable: false }
+      - { name: "status", type: "String(20)", nullable: false, default: "pending", description: "pending/running/completed/failed" }
+      - { name: "total_predictions", type: "Integer", nullable: false, default: 0 }
+      - { name: "correct_count", type: "Integer", nullable: false, default: 0 }
+      - { name: "abstain_count", type: "Integer", nullable: false, default: 0 }
+      - { name: "accuracy_rate", type: "Float", nullable: false, default: 0.0 }
+      - { name: "brier_score", type: "Float", nullable: true }
+      - { name: "calibration_error", type: "Float", nullable: true }
+      - { name: "auc_score", type: "Float", nullable: true }
+      - { name: "f1_score", type: "Float", nullable: true }
+      - { name: "avg_excess_return", type: "Float", nullable: true }
+      - { name: "by_event_type_metrics", type: "Text", nullable: true, description: "JSON: metrics by event type" }
+      - { name: "duration_seconds", type: "Float", nullable: false, default: 0.0 }
+      - { name: "error_message", type: "Text", nullable: true }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+      - { name: "completed_at", type: "DateTime", nullable: true }
+    indexes:
+      - { name: "idx_advan_run_market_status", columns: ["market", "status"] }
+      - { name: "idx_advan_run_policy", columns: ["policy_id"] }
+
+  advan_eval_run:
+    description: "Policy evaluation on train/val/test splits"
+    model_file: "app/advan/models.py"
+    columns:
+      - { name: "id", type: "Integer", pk: true, autoincrement: true }
+      - { name: "policy_id", type: "Integer", nullable: false, indexed: true }
+      - { name: "simulation_run_id", type: "Integer", nullable: true }
+      - { name: "eval_period_from", type: "Date", nullable: false }
+      - { name: "eval_period_to", type: "Date", nullable: false }
+      - { name: "split_type", type: "String(20)", nullable: false, default: "test", description: "train/val/test" }
+      - { name: "accuracy", type: "Float", nullable: false, default: 0.0 }
+      - { name: "f1", type: "Float", nullable: false, default: 0.0 }
+      - { name: "brier", type: "Float", nullable: false, default: 0.0 }
+      - { name: "calibration_error", type: "Float", nullable: false, default: 0.0 }
+      - { name: "auc", type: "Float", nullable: true }
+      - { name: "avg_excess_return", type: "Float", nullable: true }
+      - { name: "by_event_type", type: "Text", nullable: true, description: "JSON: metrics by event type" }
+      - { name: "by_direction", type: "Text", nullable: true, description: "JSON: metrics by direction" }
+      - { name: "robustness_metrics", type: "Text", nullable: true, description: "JSON: robustness tests" }
+      - { name: "total_predictions", type: "Integer", nullable: false, default: 0 }
+      - { name: "abstain_rate", type: "Float", nullable: false, default: 0.0 }
+      - { name: "created_at", type: "DateTime", nullable: false, default: "now(UTC)" }
+    indexes:
+      - { name: "idx_advan_eval_policy_period", columns: ["policy_id", "eval_period_from"] }
+
+# ─── Redis Pub/Sub ───
+
+redis:
+  connection:
+    url: "redis://localhost:6379/0"
+    auth: "optional (redis_password env var)"
+
+  channels:
+    - name: "news_breaking_KR"
+      description: "Korean market breaking news"
+    - name: "news_breaking_US"
+      description: "US market breaking news"
+
+  threshold:
+    breaking_news: 80.0
+    description: "news_score >= 80.0 triggers breaking news publish"
+
+  message_formats:
+    BreakingNewsMessage:
+      schema_version: 1
+      type: "breaking_news"
+      fields:
+        - { name: "schema_version", type: "int", value: 1 }
+        - { name: "type", type: "str", value: "breaking_news" }
+        - { name: "stock_code", type: "str", example: "005930" }
+        - { name: "stock_name", type: "str", example: "삼성전자" }
+        - { name: "title", type: "str" }
+        - { name: "theme", type: "str", example: "실적" }
+        - { name: "sentiment", type: "float", range: "-1.0 ~ 1.0" }
+        - { name: "news_score", type: "float", range: "0 ~ 100" }
+        - { name: "market", type: "str", enum: ["KR", "US"] }
+        - { name: "published_at", type: "datetime", format: "ISO 8601" }
+        - { name: "timestamp", type: "datetime", format: "ISO 8601" }
+
+    ScoreUpdateMessage:
+      schema_version: 1
+      type: "score_update"
+      fields:
+        - { name: "schema_version", type: "int", value: 1 }
+        - { name: "type", type: "str", value: "score_update" }
+        - { name: "stock_code", type: "str" }
+        - { name: "news_score", type: "float", range: "0 ~ 100" }
+        - { name: "market", type: "str", enum: ["KR", "US"] }
+        - { name: "timestamp", type: "datetime", format: "ISO 8601" }
+
+# ─── Data Files ───
+
+data_files:
+  model_artifacts:
+    path: "backend/models/"
+    files:
+      - name: "random_forest_KR_t1_KR_t1_1.0.pkl"
+        size: "419 KB"
+        type: "scikit-learn Random Forest"
+        market: "KR"
+        feature_tier: 1
+
+  prediction_context:
+    path: "backend/data/prediction_context.json"
+    description: "ML prediction context data for runtime predictions"
+
+  migrations:
+    path: "backend/alembic/versions/"
+    files:
+      - { revision: "a3508d2fd73d", description: "Initial schema (news_event, stock_price, theme_strength)" }
+      - { revision: "9f69148009e7", description: "Add prediction verification tables" }
+      - { revision: "a1b2c3d4e5f6", description: "Add training data pipeline" }
+      - { revision: "c3d4e5f6g7h8", description: "Add ml_model table" }
+      - { revision: "b2c3d4e5f6g7", description: "Add Tier 1 ML columns" }
+      - { revision: "d4e5f6g7h8i9", description: "Add Tier 2 columns" }
+      - { revision: "e5f6g7h8i9j0", description: "Add Tier 3 columns" }
+
+# ─── Scoring Formula ───
+
+scoring:
+  formula: "0.4 * Recency + 0.3 * Frequency + 0.2 * Sentiment + 0.1 * Disclosure"
+  weights:
+    recency: 0.4
+    frequency: 0.3
+    sentiment: 0.2
+    disclosure: 0.1
+  recency_half_life: "24 hours (exponential decay)"
+  output_range: "0-100"

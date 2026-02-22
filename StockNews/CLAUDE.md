@@ -191,3 +191,16 @@ This project provides data to the **StockAgent** automated trading system (`~/Ag
 - Redis message format changes require coordinated release with StockAgent
 
 **Platform manager:** See `~/AgentDev/CLAUDE.md` for cross-project orchestration guidelines.
+
+## Structure & Data Meta Documentation
+
+프로젝트 구조와 데이터 메타정보는 아래 YAML 파일에 문서화되어 있습니다:
+
+- `docs/Appl_Structure.yaml` — Application 구조 (backend, frontend, tests, infra)
+- `docs/DataMeta.yaml` — Database 테이블, Redis, 데이터 파일 메타정보
+
+### 유지 원칙
+
+1. Application 구조 변경 시 (모듈/패키지/페이지 추가·삭제·이동) → `Appl_Structure.yaml` 업데이트
+2. Database/Data 변경 시 (테이블·컬럼·인덱스 추가·변경, Redis 채널·메시지 포맷 변경) → `DataMeta.yaml` 업데이트
+3. Plan, 설계, 개발, 테스트, CI/CD 전 과정에서 이 YAML 파일을 참고하여 일관성 유지

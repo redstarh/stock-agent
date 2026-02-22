@@ -1,0 +1,665 @@
+# StockNews Application Structure
+# Single Source of Truth for project architecture
+# Update this file when modules/packages/pages are added, deleted, or moved
+# Last updated: 2026-02-22
+
+project:
+  name: StockNews
+  description: "News Intelligence Service - 뉴스 수집/분석 시스템 for Korean and US stock markets"
+  version: "3.0"
+  status: "Phase 1-3 complete"
+  port: 8001
+
+  tech_stack:
+    backend:
+      language: "Python 3.13"
+      framework: "FastAPI"
+      orm: "SQLAlchemy 2.0"
+      database: "SQLite (dev) / PostgreSQL (prod)"
+      cache: "Redis 7+"
+      scheduler: "APScheduler"
+      nlp: "OpenAI / AWS Bedrock"
+      ml: "scikit-learn (Random Forest)"
+    frontend:
+      language: "TypeScript 5.9"
+      framework: "React 19"
+      build: "Vite 7"
+      state: "TanStack Query v5"
+      charts: "Recharts 3"
+      styling: "Tailwind CSS 4"
+      routing: "React Router 7"
+
+backend:
+  entry_point: "app/main.py"
+  description: "FastAPI application with lifespan management, middleware stack, and router mounting"
+
+  packages:
+    api:
+      description: "REST API endpoint handlers"
+      path: "app/api/"
+      modules:
+        - name: "router.py"
+          description: "v1 API router aggregating all sub-routers"
+        - name: "news.py"
+          description: "News score, top news, latest news endpoints"
+        - name: "stocks.py"
+          description: "Stock info and score timeline endpoints"
+        - name: "themes.py"
+          description: "Theme list and strength ranking endpoints"
+        - name: "collect.py"
+          description: "Manual trigger for KR/US news collection"
+        - name: "prediction.py"
+          description: "ML prediction endpoints"
+        - name: "prediction_context.py"
+          description: "Prediction context management endpoints"
+        - name: "training.py"
+          description: "Training data management endpoints"
+        - name: "verification.py"
+          description: "Prediction verification endpoints"
+        - name: "summary.py"
+          description: "News summary endpoints"
+        - name: "health.py"
+          description: "Health check (DB + Redis connectivity)"
+        - name: "metrics.py"
+          description: "Prometheus metrics endpoint"
+        - name: "versions.py"
+          description: "API version information"
+        - name: "websocket.py"
+          description: "WebSocket breaking news stream (/ws/news)"
+      sub_packages:
+        - name: "v2/"
+          description: "v2 API endpoints"
+          modules:
+            - name: "router.py"
+              description: "v2 router with enhanced endpoints"
+
+    advan:
+      description: "Advanced Event-Driven Prediction System"
+      path: "app/advan/"
+      modules:
+        - name: "api.py"
+          description: "REST endpoints for policy, simulation, evaluation management"
+        - name: "event_extractor.py"
+          description: "Extract structured events from news/DART"
+        - name: "event_retriever.py"
+          description: "Query and filter extracted events"
+        - name: "feature_store.py"
+          description: "Store and retrieve features for events"
+        - name: "llm_forecaster.py"
+          description: "LLM-based forecasting (Bedrock)"
+        - name: "simulator.py"
+          description: "Monte Carlo simulation engine"
+        - name: "optimizer.py"
+          description: "Hyperparameter optimization for policies"
+        - name: "policy.py"
+          description: "Trading policy management and workflow"
+        - name: "evaluator.py"
+          description: "Evaluate prediction accuracy"
+        - name: "guardrails.py"
+          description: "Risk and sanity checks on policies"
+        - name: "models.py"
+          description: "SQLAlchemy models for ADVAN tables"
+        - name: "schemas.py"
+          description: "Pydantic schemas for ADVAN API"
+
+    collectors:
+      description: "News data source collectors"
+      path: "app/collectors/"
+      modules:
+        - name: "naver.py"
+          description: "Korean news via Naver search API + BeautifulSoup"
+        - name: "dart.py"
+          description: "Korean corporate disclosures (공시)"
+        - name: "finnhub.py"
+          description: "US market news via Finnhub API"
+        - name: "newsapi.py"
+          description: "Additional news sources via NewsAPI"
+        - name: "rss.py"
+          description: "Generic RSS feed collector"
+        - name: "price_collector.py"
+          description: "Historical stock price data collection"
+        - name: "market_indicator_collector.py"
+          description: "Market-level indicator collection"
+        - name: "yfinance_middleware.py"
+          description: "yFinance data bridge"
+        - name: "pipeline.py"
+          description: "Orchestrates collect → dedup → sentiment → score → save → publish"
+        - name: "scheduler.py"
+          description: "APScheduler job definitions for KR/DART/US collection"
+        - name: "verification_scheduler.py"
+          description: "Scheduled verification jobs"
+
+    processing:
+      description: "NLP, Feature Engineering, ML Pipeline"
+      path: "app/processing/"
+      modules:
+        # NLP
+        - name: "sentiment.py"
+          description: "LLM-based sentiment analysis (Bedrock/OpenAI)"
+        - name: "summary.py"
+          description: "News summarization (LLM)"
+        - name: "llm_theme_classifier.py"
+          description: "Theme classification (금융, 정책, 기술 등)"
+        - name: "article_scraper.py"
+          description: "Article content extraction"
+        - name: "dedup.py"
+          description: "Duplicate detection (URL-first, then title-match)"
+        # Stock Mapping
+        - name: "stock_mapper.py"
+          description: "Korean stock code mapping (005930 → 삼성전자)"
+        - name: "us_stock_mapper.py"
+          description: "US ticker extraction (AAPL, MSFT)"
+        - name: "cross_market.py"
+          description: "Cross-market impact analysis"
+        - name: "cross_theme_scorer.py"
+          description: "Theme-level scoring across markets"
+        - name: "theme_aggregator.py"
+          description: "Aggregate theme-level data"
+        # Feature Engineering
+        - name: "feature_engineer.py"
+          description: "Generate features from news data"
+        - name: "feature_config.py"
+          description: "Feature specification and configuration"
+        - name: "feature_validator.py"
+          description: "Validate feature quality"
+        - name: "technical_indicators.py"
+          description: "Calculate TA indicators (RSI, MACD, etc.)"
+        - name: "price_fetcher.py"
+          description: "Fetch historical prices for training"
+        - name: "data_alignment.py"
+          description: "Align news dates with price dates"
+        # ML
+        - name: "ml_model.py"
+          description: "Random Forest classifier wrapper"
+        - name: "ml_trainer.py"
+          description: "Model training orchestration"
+        - name: "prediction.py"
+          description: "Inference using trained model"
+        - name: "llm_predictor.py"
+          description: "LLM-based directional prediction"
+        - name: "prediction_context_builder.py"
+          description: "Build context for predictions"
+        # Training
+        - name: "training_data_builder.py"
+          description: "Assemble training datasets"
+        - name: "training_backfill.py"
+          description: "Backfill historical training data"
+        # Verification
+        - name: "verification_engine.py"
+          description: "Validate predictions against actual prices"
+
+    models:
+      description: "SQLAlchemy ORM models"
+      path: "app/models/"
+      modules:
+        - name: "base.py"
+          description: "DeclarativeBase for all models"
+        - name: "news_event.py"
+          description: "NewsEvent - core news items table"
+        - name: "theme_strength.py"
+          description: "ThemeStrength - daily aggregated theme metrics"
+        - name: "stock_price.py"
+          description: "StockPrice - historical OHLCV data"
+        - name: "ml_model.py"
+          description: "MLModel - trained model registry"
+        - name: "training.py"
+          description: "StockTrainingData - feature snapshots for ML"
+        - name: "verification.py"
+          description: "DailyPredictionResult, ThemePredictionAccuracy, VerificationRunLog"
+
+    schemas:
+      description: "Pydantic request/response schemas"
+      path: "app/schemas/"
+      modules:
+        - name: "common.py"
+          description: "Shared base schemas"
+        - name: "news.py"
+          description: "News API request/response schemas"
+        - name: "theme.py"
+          description: "Theme API schemas"
+        - name: "prediction.py"
+          description: "Prediction API schemas"
+        - name: "prediction_context.py"
+          description: "Prediction context schemas"
+        - name: "training.py"
+          description: "Training API schemas"
+        - name: "verification.py"
+          description: "Verification API schemas"
+        - name: "pubsub.py"
+          description: "Redis Pub/Sub message schemas (BreakingNewsMessage, ScoreUpdateMessage)"
+
+    scoring:
+      description: "News scoring engine"
+      path: "app/scoring/"
+      modules:
+        - name: "engine.py"
+          description: "Weighted score: 0.4×Recency + 0.3×Frequency + 0.2×Sentiment + 0.1×Disclosure"
+        - name: "aggregator.py"
+          description: "Aggregate news scores by theme"
+
+    core:
+      description: "Infrastructure - config, DB, Redis, auth, logging"
+      path: "app/core/"
+      modules:
+        - name: "config.py"
+          description: "Environment configuration via BaseSettings (30+ env vars)"
+        - name: "database.py"
+          description: "SQLAlchemy engine and session factory"
+        - name: "redis.py"
+          description: "Redis client management"
+        - name: "pubsub.py"
+          description: "Redis Pub/Sub publish/subscribe for breaking news"
+        - name: "auth.py"
+          description: "API key authentication"
+        - name: "logging.py"
+          description: "Structured JSON logging (structlog)"
+        - name: "monitoring.py"
+          description: "Sentry error tracking + Prometheus metrics"
+        - name: "middleware.py"
+          description: "RequestLoggingMiddleware with request_id"
+        - name: "versioning.py"
+          description: "APIVersionMiddleware for version headers"
+        - name: "limiter.py"
+          description: "SlowAPI rate limiting"
+        - name: "llm.py"
+          description: "LLM client (OpenAI/Bedrock)"
+        - name: "secrets.py"
+          description: "AWS Secrets Manager integration"
+
+  config_files:
+    - path: "pyproject.toml"
+      description: "Python project config, 44 dependencies, pytest/ruff/coverage settings"
+    - path: "alembic.ini"
+      description: "Alembic migration configuration"
+    - path: "ruff.toml"
+      description: "Ruff linter config (py313, E/F/I/N/W/UP/B/SIM rules)"
+
+  middleware_stack:
+    - name: "CORS"
+      description: "Cross-origin request handling"
+    - name: "RequestLoggingMiddleware"
+      description: "Request ID generation and lifecycle logging"
+    - name: "APIVersionMiddleware"
+      description: "API version header handling"
+    - name: "RateLimiter"
+      description: "SlowAPI rate limiting"
+
+frontend:
+  entry_point: "src/main.tsx"
+  app_root: "src/App.tsx"
+  description: "React dashboard with routing, QueryClient, MarketProvider, WebSocket"
+
+  pages:
+    - name: "DashboardPage.tsx"
+      description: "Main dashboard - top stocks by news score, theme strength chart"
+    - name: "NewsPage.tsx"
+      description: "News list with filtering (date, stock, sentiment, theme)"
+    - name: "StockDetailPage.tsx"
+      description: "Stock detail - score timeline, sentiment, prediction charts"
+    - name: "ThemeAnalysisPage.tsx"
+      description: "Theme strength analysis - rise index, top stories by theme"
+    - name: "MLDashboardPage.tsx"
+      description: "ML model metrics - tier status, accuracy, confusion matrix"
+    - name: "VerificationPage.tsx"
+      description: "Prediction accuracy verification - daily accuracy, stock results"
+    - name: "SystemComparisonPage.tsx"
+      description: "System comparison - prediction systems and Advan simulation"
+
+  components:
+    layout:
+      - name: "Layout.tsx"
+        description: "Main layout wrapper (Header + Sidebar + content)"
+      - name: "Header.tsx"
+        description: "Top navigation bar with app title and links"
+      - name: "Sidebar.tsx"
+        description: "Left sidebar navigation with menu and market selector"
+    charts:
+      - name: "ScoreTimeline.tsx"
+        description: "Line chart - news score over time (Recharts)"
+      - name: "SentimentPie.tsx"
+        description: "Pie chart - sentiment distribution"
+      - name: "ThemeStrengthChart.tsx"
+        description: "Bar chart - theme strength rankings"
+      - name: "ChartDrilldown.tsx"
+        description: "Interactive chart drill-down on data point click"
+      - name: "PredictionChart.tsx"
+        description: "Prediction direction chart with confidence"
+    common:
+      - name: "Loading.tsx"
+        description: "Spinner and loading state indicator"
+      - name: "ErrorBoundary.tsx"
+        description: "Error boundary with fallback UI"
+      - name: "Toast.tsx"
+        description: "Toast notification for breaking news alerts"
+      - name: "MarketSelector.tsx"
+        description: "Market toggle (KR/US) via context"
+      - name: "SentimentIndicator.tsx"
+        description: "Sentiment badge with color coding"
+      - name: "PredictionSignal.tsx"
+        description: "Prediction direction indicator with signal strength"
+      - name: "NotificationBell.tsx"
+        description: "Notification bell with unread count"
+      - name: "FilterPanel.tsx"
+        description: "Advanced filters (date, sentiment, score, stock, theme)"
+    news:
+      - name: "NewsList.tsx"
+        description: "Paginated news list with score and sentiment"
+      - name: "NewsCard.tsx"
+        description: "Single news item card with metadata"
+      - name: "TopStockCards.tsx"
+        description: "Top stocks grid by news score"
+    ml:
+      - name: "ModelCard.tsx"
+        description: "Model info card with accuracy metrics"
+      - name: "TierStatus.tsx"
+        description: "Model tier indicator (Tier 1/2/3)"
+      - name: "ConfusionMatrix.tsx"
+        description: "Confusion matrix visualization"
+      - name: "DirectionAccuracy.tsx"
+        description: "Accuracy by prediction direction"
+      - name: "AccuracyTrendChart.tsx"
+        description: "Accuracy trends over time"
+      - name: "FeatureImportanceChart.tsx"
+        description: "Top features bar chart"
+    verification:
+      - name: "AccuracyOverviewCard.tsx"
+        description: "Summary card - accuracy, precision, recall"
+      - name: "DailyAccuracyChart.tsx"
+        description: "Daily accuracy line chart"
+      - name: "StockResultsTable.tsx"
+        description: "Detailed stock prediction results table"
+      - name: "ThemeAccuracyBreakdown.tsx"
+        description: "Accuracy metrics per theme category"
+
+  hooks:
+    - name: "useNewsScore.ts"
+      description: "Fetch news score for a stock"
+    - name: "useTopNews.ts"
+      description: "Fetch top news items for market/date"
+    - name: "usePrediction.ts"
+      description: "Fetch ML prediction (direction, confidence)"
+    - name: "useVerification.ts"
+      description: "Fetch accuracy metrics"
+    - name: "useMLDashboard.ts"
+      description: "Fetch ML models, stats, training status"
+    - name: "useThemeStrength.ts"
+      description: "Fetch theme strength data"
+    - name: "useWebSocket.ts"
+      description: "WebSocket connection to breaking news stream"
+    - name: "useSimulationAdvan.ts"
+      description: "Advan simulation hooks (useAdvanRunByStock, useAdvanRunByTheme)"
+
+  api:
+    - name: "client.ts"
+      description: "Axios instance with error handling and base URL"
+    - name: "news.ts"
+      description: "News endpoints (fetchTopNews, fetchLatestNews, fetchNewsScore)"
+    - name: "stocks.ts"
+      description: "Stock endpoints (metadata, details, score)"
+    - name: "themes.ts"
+      description: "Theme endpoints (fetchThemeStrength, fetchThemeNews)"
+    - name: "verification.ts"
+      description: "Verification endpoints (accuracy, daily results, theme breakdowns)"
+    - name: "training.ts"
+      description: "ML training endpoints (train, status)"
+    - name: "predictionContext.ts"
+      description: "Prediction context management (fetch/rebuild)"
+    - name: "simulationAdvan.ts"
+      description: "Advan simulation API (run, fetch results)"
+
+  types:
+    - name: "api.ts"
+      description: "Base API types (BreakingNewsData, response wrappers)"
+    - name: "news.ts"
+      description: "News domain types (NewsItem, NewsScore, NewsTopItem)"
+    - name: "theme.ts"
+      description: "Theme domain types (Theme, ThemeStrength)"
+    - name: "verification.ts"
+      description: "Verification types (AccuracyResponse, DailyPredictionResult)"
+    - name: "training.ts"
+      description: "ML training types (ModelMetrics, TrainingStatus)"
+    - name: "predictionContext.ts"
+      description: "Prediction context types"
+    - name: "simulationAdvan.ts"
+      description: "Advan simulation types (AdvanSimulationRun, AdvanRunResult)"
+
+  contexts:
+    - name: "MarketContext.tsx"
+      description: "Global KR/US market selection (Context API)"
+
+  utils:
+    - name: "constants.ts"
+      description: "App constants (MARKETS array, theme lists)"
+    - name: "format.ts"
+      description: "Format utilities (formatScore, formatDateTime, formatPercentage)"
+
+tests:
+  backend:
+    unit:
+      path: "backend/tests/unit/"
+      file_count: 58
+      categories:
+        core: ["test_config.py", "test_core.py", "test_logging.py", "test_auth.py", "test_secrets.py", "test_monitoring.py", "test_monitoring_api.py", "test_api_versioning.py"]
+        scoring: ["test_scoring.py", "test_aggregator.py"]
+        nlp: ["test_sentiment.py", "test_sentiment_accuracy.py", "test_summary.py", "test_auto_summarize.py", "test_article_scraper.py", "test_theme_classifier.py", "test_theme_aggregator.py", "test_cross_theme_scorer.py"]
+        mapping: ["test_stock_mapper.py", "test_us_stock_mapper.py"]
+        collection: ["test_pipeline.py", "test_scheduler_jobs.py", "test_price_collector.py", "test_price_fetcher.py", "test_market_indicator_collector.py", "test_yfinance_middleware.py"]
+        ml: ["test_ml_model_enhanced.py", "test_ml_trainer.py", "test_ml_evaluator.py", "test_ml_optimization.py", "test_model_registry.py", "test_feature_engineer.py", "test_feature_validator.py", "test_feature_config.py", "test_technical_indicators.py", "test_data_alignment.py"]
+        prediction: ["test_prediction.py", "test_prediction_schema.py", "test_prediction_context_builder.py", "test_prediction_context_api.py", "test_llm_predictor.py", "test_llm.py"]
+        training: ["test_training_data_builder.py", "test_training_backfill.py"]
+        verification: ["test_verification_models.py", "test_verification_engine.py", "test_verification_scheduler.py", "test_verification_api.py"]
+        pubsub: ["test_pubsub_enhanced.py", "test_pubsub_schemas.py"]
+        advan: ["test_advan_api.py", "test_advan_evaluator.py", "test_advan_event_extractor.py", "test_advan_policy.py"]
+        schema: ["test_schemas.py", "test_news_schema.py", "test_models.py"]
+        misc: ["test_smoke.py", "test_dedup.py", "test_auto_rollback.py"]
+    integration:
+      path: "backend/tests/integration/"
+      file_count: 26
+      files:
+        - "test_database.py"
+        - "test_api_news.py"
+        - "test_api_news_enhanced.py"
+        - "test_api_stocks.py"
+        - "test_api_themes.py"
+        - "test_api_summary.py"
+        - "test_api_prediction.py"
+        - "test_collectors.py"
+        - "test_us_collectors.py"
+        - "test_redis_pubsub.py"
+        - "test_websocket.py"
+        - "test_websocket_broadcast.py"
+        - "test_health.py"
+        - "test_rate_limit.py"
+        - "test_verification_api.py"
+        - "test_training_api.py"
+        - "test_training_api_ext.py"
+        - "test_data_readiness.py"
+        - "test_prediction_context_integration.py"
+        - "test_contract_api.py"
+        - "test_contract_redis.py"
+    config:
+      test_runner: "pytest >= 8.0.0"
+      markers: ["unit", "integration", "slow"]
+      coverage_target: 70
+      fixtures: ["db_engine (session-scoped)", "db_session (transaction-isolated)", "integration_engine"]
+
+  frontend:
+    unit:
+      path: "frontend/tests/"
+      file_count: 47
+      categories:
+        api: ["client.test.ts", "news.test.ts", "stocks.test.ts", "themes.test.ts"]
+        components: 26  # component test files across layout, charts, common, news, ml, verification
+        hooks: ["useNewsScore.test.ts", "usePrediction.test.ts", "useThemeStrength.test.ts", "useWebSocket.test.ts"]
+        pages: ["DashboardPage.test.tsx", "MLDashboardPage.test.tsx", "StockDetailPage.test.tsx", "SystemComparisonPage.test.tsx", "ThemeAnalysisPage.test.tsx", "VerificationPage.test.tsx"]
+        utils: ["format.test.ts"]
+        smoke: ["smoke.test.tsx"]
+    e2e:
+      path: "frontend/tests/e2e/"
+      runner: "Playwright"
+      file_count: 5
+      files:
+        - "dashboard.spec.ts"
+        - "navigation.spec.ts"
+        - "stock-detail.spec.ts"
+        - "theme-analysis.spec.ts"
+        - "verification.spec.ts"
+    mocks:
+      path: "frontend/tests/mocks/"
+      description: "MSW (Mock Service Worker) setup"
+      files: ["server.ts", "handlers.ts", "data.ts"]
+    config:
+      test_runner: "Vitest"
+      environment: "jsdom"
+      coverage_thresholds:
+        statements: 45
+        branches: 35
+        functions: 35
+        lines: 45
+
+infrastructure:
+  docker:
+    backend_dockerfile:
+      path: "backend/Dockerfile"
+      base: "Python 3.13-slim (multi-stage)"
+      port: 8001
+      health_check: "curl -f http://localhost:8001/health"
+    frontend_dockerfile:
+      path: "frontend/Dockerfile"
+      base: "Node 20-alpine + nginx 1.27-alpine (multi-stage)"
+      port: 80
+      health_check: "wget -q --spider http://localhost:80/"
+    compose:
+      path: "docker-compose.yml"
+      services:
+        - name: "backend"
+          image: "FastAPI"
+          port: 8001
+          depends_on: ["db", "redis"]
+        - name: "frontend"
+          image: "nginx"
+          port: 80
+          depends_on: ["backend"]
+        - name: "db"
+          image: "postgres:16-alpine"
+          port: 5432
+        - name: "redis"
+          image: "redis:7-alpine"
+          port: 6379
+        - name: "prometheus"
+          image: "prom/prometheus:v2.50.0"
+          port: 9090
+        - name: "grafana"
+          image: "grafana/grafana:v10.3.1"
+          port: 3000
+      volumes: ["pgdata", "redisdata", "prometheus-data", "grafana-data"]
+      network: "app-network (bridge)"
+
+  ci_cd:
+    test_workflow:
+      path: ".github/workflows/test.yml"
+      jobs:
+        - name: "backend-test"
+          description: "Python 3.13 - ruff lint + pytest with coverage"
+        - name: "frontend-unit-test"
+          description: "Node 20 - eslint + tsc -b + vitest with coverage"
+        - name: "frontend-e2e-test"
+          description: "Playwright chromium E2E tests"
+          depends_on: ["frontend-unit-test"]
+        - name: "docker-build"
+          description: "Build backend + frontend Docker images"
+          depends_on: ["backend-test", "frontend-unit-test"]
+    deploy_workflow:
+      path: ".github/workflows/deploy.yml"
+      description: "Production deployment workflow"
+
+  monitoring:
+    prometheus:
+      config: "monitoring/prometheus/prometheus.yml"
+      scrape_interval: "15s"
+      target: "backend:8001/metrics"
+    grafana:
+      dashboards: "monitoring/grafana/provisioning/dashboards/default.yml"
+      datasources: "monitoring/grafana/provisioning/datasources/prometheus.yml"
+    fluentd:
+      config: "monitoring/fluentd/fluent.conf"
+      port: 24224
+      description: "JSON log aggregation from structlog"
+
+  env_files:
+    - ".env.example"
+    - ".env.production"
+    - ".env.development"
+    - ".env.test"
+    - "backend/.env.example"
+    - "frontend/.env.example"
+
+integrations:
+  data_sources:
+    korean_news:
+      - name: "Naver"
+        type: "search API + scraping"
+        module: "collectors/naver.py"
+      - name: "DART"
+        type: "corporate disclosures API"
+        module: "collectors/dart.py"
+    us_news:
+      - name: "Finnhub"
+        type: "market news API"
+        module: "collectors/finnhub.py"
+      - name: "NewsAPI"
+        type: "news aggregation API"
+        module: "collectors/newsapi.py"
+    market_data:
+      - name: "yfinance"
+        type: "stock price/volume data"
+        module: "collectors/yfinance_middleware.py"
+    general:
+      - name: "RSS"
+        type: "generic RSS feeds"
+        module: "collectors/rss.py"
+
+  external_apis:
+    - name: "OpenAI"
+      usage: "sentiment analysis, summarization, prediction"
+    - name: "AWS Bedrock"
+      usage: "LLM forecasting (Advan)"
+    - name: "AWS Secrets Manager"
+      usage: "secrets management"
+    - name: "Sentry"
+      usage: "error tracking"
+
+  inter_system:
+    rest_api:
+      provider: "StockNews (port 8001)"
+      consumer: "StockAgent"
+      endpoints:
+        - "GET /api/v1/news/score?stock={code}"
+        - "GET /api/v1/news/top?market={KR|US}&limit=10"
+    redis_pubsub:
+      publisher: "StockNews (app/core/pubsub.py)"
+      subscriber: "StockAgent (backend/src/core/news_subscriber.py)"
+      channels:
+        - "news_breaking_KR"
+        - "news_breaking_US"
+      threshold: "score >= 80.0"
+
+  migrations:
+    tool: "Alembic"
+    config: "alembic.ini"
+    versions_path: "backend/alembic/versions/"
+    files:
+      - revision: "a3508d2fd73d"
+        description: "Initial schema (news_event, stock_price, theme_strength)"
+      - revision: "9f69148009e7"
+        description: "Add prediction verification tables"
+      - revision: "a1b2c3d4e5f6"
+        description: "Add training data pipeline"
+      - revision: "c3d4e5f6g7h8"
+        description: "Add ml_model table"
+      - revision: "b2c3d4e5f6g7"
+        description: "Add Tier 1 ML columns"
+      - revision: "d4e5f6g7h8i9"
+        description: "Add Tier 2 columns"
+      - revision: "e5f6g7h8i9j0"
+        description: "Add Tier 3 columns"
