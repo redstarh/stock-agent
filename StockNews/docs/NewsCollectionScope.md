@@ -26,70 +26,56 @@ korean_market:
       stock_code: "000270"
     - query: "POSCO홀딩스"
       stock_code: "005490"
+    # 테마 대표주 추가 (Tier 1 확대)
+    - query: "삼성SDI"
+      stock_code: "006400"
+    - query: "LG화학"
+      stock_code: "051910"
+    - query: "한화에어로스페이스"
+      stock_code: "012450"
+    - query: "HD현대중공업"
+      stock_code: "329180"
+    - query: "크래프톤"
+      stock_code: "259960"
+    - query: "KB금융"
+      stock_code: "105560"
+    - query: "에코프로비엠"
+      stock_code: "247540"
+    - query: "알테오젠"
+      stock_code: "196170"
+    - query: "HYBE"
+      stock_code: "352820"
+    - query: "한국전력"
+      stock_code: "015760"
 
 us_market:
-  # Finnhub 수집 설정
+  # Finnhub만 사용 (NewsAPI는 Finnhub과 중복으로 제거)
   finnhub:
     category: "general"
-  # NewsAPI 수집 설정
-  newsapi:
-    default_query: "stock market"
-    language: "en"
-    page_size: 20
 
 dart:
   # DART 공시는 전체 공시를 수집 후 stock_mapper로 필터링
   page_count: 100
 
-# RSS 피드 목록
+# RSS 피드 목록 (매체당 1개 — 중복 제거)
 rss_feeds:
   korean:
     - url: "https://www.yna.co.kr/rss/economy.xml"
-      source_name: "rss:연합뉴스_경제"
-      market: "KR"
-    - url: "https://www.yna.co.kr/rss/industry.xml"
-      source_name: "rss:연합뉴스_산업"
+      source_name: "rss:연합뉴스"
       market: "KR"
     - url: "https://www.hankyung.com/feed/stock"
-      source_name: "rss:한국경제_증권"
-      market: "KR"
-    - url: "https://www.hankyung.com/feed/finance"
-      source_name: "rss:한국경제_금융"
+      source_name: "rss:한국경제"
       market: "KR"
     - url: "https://www.mk.co.kr/rss/30100041/"
-      source_name: "rss:매일경제_증권"
-      market: "KR"
-    - url: "https://www.mk.co.kr/rss/30000001/"
-      source_name: "rss:매일경제_경제"
-      market: "KR"
-    - url: "https://www.sedaily.com/RSS/Stock"
-      source_name: "rss:서울경제_증권"
-      market: "KR"
-    - url: "https://rss.edaily.co.kr/edaily/ECONOMY"
-      source_name: "rss:이데일리_경제"
+      source_name: "rss:매일경제"
       market: "KR"
     - url: "https://rss.edaily.co.kr/edaily/STOCK"
-      source_name: "rss:이데일리_증권"
+      source_name: "rss:이데일리"
       market: "KR"
     - url: "https://mt.co.kr/rss/stock.xml"
-      source_name: "rss:머니투데이_증권"
+      source_name: "rss:머니투데이"
       market: "KR"
-  us:
-    - url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147"
-      source_name: "rss:CNBC_Top_News"
-      market: "US"
-    - url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839135"
-      source_name: "rss:CNBC_Finance"
-      market: "US"
-    - url: "https://feeds.marketwatch.com/marketwatch/topstories"
-      source_name: "rss:MarketWatch"
-      market: "US"
-    - url: "https://feeds.marketwatch.com/marketwatch/StockstoWatch"
-      source_name: "rss:MarketWatch_Stocks"
-      market: "US"
-    - url: "https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US"
-      source_name: "rss:Yahoo_Finance_SP500"
-      market: "US"
+  # US RSS 제거 — Finnhub이 CNBC/Reuters/MarketWatch 이미 포함
 
 # 투자 테마 키워드 사전
 themes:
@@ -347,8 +333,8 @@ breaking_news:
 | 소스 | Naver News Search (웹 스크래핑) |
 |------|-------------------------------|
 | URL | `https://search.naver.com/search.naver?where=news&query={검색어}` |
-| 수집 주기 | 1분 (`collection_interval_kr`) |
-| 검색 대상 | 시가총액 상위 10개 종목 (YAML `korean_market.search_queries` 참조) |
+| 수집 주기 | 5분 (`collection_interval_kr`) |
+| 검색 대상 | 시가총액 상위 20개 종목 (YAML `korean_market.search_queries` 참조) |
 
 **검색 쿼리 목록:**
 
@@ -364,6 +350,16 @@ breaking_news:
 | 8 | 삼성바이오로직스 | 207940 |
 | 9 | 기아 | 000270 |
 | 10 | POSCO홀딩스 | 005490 |
+| 11 | 삼성SDI | 006400 |
+| 12 | LG화학 | 051910 |
+| 13 | 한화에어로스페이스 | 012450 |
+| 14 | HD현대중공업 | 329180 |
+| 15 | 크래프톤 | 259960 |
+| 16 | KB금융 | 105560 |
+| 17 | 에코프로비엠 | 247540 |
+| 18 | 알테오젠 | 196170 |
+| 19 | HYBE | 352820 |
+| 20 | 한국전력 | 015760 |
 
 #### DART 전자공시
 
@@ -380,52 +376,29 @@ breaking_news:
 
 | 소스 | Finnhub API (`finnhub.io/api/v1/news`) |
 |------|----------------------------------------|
-| 수집 주기 | 3분 (`collection_interval_us`) |
+| 수집 주기 | 5분 (`collection_interval_us`) |
 | 카테고리 | `general` (시장 전반 뉴스) |
 | 종목 매핑 | 제목에서 ticker 추출 (`extract_tickers_from_text`) |
 | 추가 기능 | `collect_company_news(symbol)` — 특정 종목 뉴스 (최근 7일) |
-
-#### NewsAPI
-
-| 소스 | NewsAPI.org (`newsapi.org/v2/everything`) |
-|------|------------------------------------------|
-| 기본 쿼리 | `"stock market"` |
-| 언어 | `en` (영어) |
-| 페이지 크기 | 20 |
-| 정렬 | `publishedAt` (최신순) |
-| 종목 매핑 | 제목에서 ticker 추출 |
 
 ### 1.3 RSS 피드
 
 | 소스 | 범용 RSS 파서 |
 |------|---------------|
-| 수집 주기 | 한국 KR: 1분 (Naver와 동일), US: 3분 (Finnhub와 동일) |
+| 수집 주기 | 한국 KR: 5분 (Naver와 동일) |
 | 피드 목록 | YAML `rss_feeds` 섹션 참조 |
 
-#### 한국 RSS 피드 (10개)
+#### 한국 RSS 피드 (5개, 매체당 1개)
 
 | # | 소스 | 피드 URL |
 |---|------|----------|
 | 1 | 연합뉴스 경제 | `https://www.yna.co.kr/rss/economy.xml` |
-| 2 | 연합뉴스 산업 | `https://www.yna.co.kr/rss/industry.xml` |
-| 3 | 한국경제 증권 | `https://www.hankyung.com/feed/stock` |
-| 4 | 한국경제 금융 | `https://www.hankyung.com/feed/finance` |
-| 5 | 매일경제 증권 | `https://www.mk.co.kr/rss/30100041/` |
-| 6 | 매일경제 경제 | `https://www.mk.co.kr/rss/30000001/` |
-| 7 | 서울경제 증권 | `https://www.sedaily.com/RSS/Stock` |
-| 8 | 이데일리 경제 | `https://rss.edaily.co.kr/edaily/ECONOMY` |
-| 9 | 이데일리 증권 | `https://rss.edaily.co.kr/edaily/STOCK` |
-| 10 | 머니투데이 증권 | `https://mt.co.kr/rss/stock.xml` |
+| 2 | 한국경제 증권 | `https://www.hankyung.com/feed/stock` |
+| 3 | 매일경제 증권 | `https://www.mk.co.kr/rss/30100041/` |
+| 4 | 이데일리 증권 | `https://rss.edaily.co.kr/edaily/STOCK` |
+| 5 | 머니투데이 증권 | `https://mt.co.kr/rss/stock.xml` |
 
-#### 미국 RSS 피드 (5개)
-
-| # | 소스 | 피드 URL |
-|---|------|----------|
-| 1 | CNBC Top News | `https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147` |
-| 2 | CNBC Finance | `https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839135` |
-| 3 | MarketWatch Top | `https://feeds.marketwatch.com/marketwatch/topstories` |
-| 4 | MarketWatch Stocks | `https://feeds.marketwatch.com/marketwatch/StockstoWatch` |
-| 5 | Yahoo Finance S&P500 | `https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US` |
+> US RSS 피드는 Finnhub이 CNBC/Reuters/MarketWatch를 이미 포함하므로 제거되었습니다.
 
 ## 2. 종목 사전
 
@@ -517,9 +490,10 @@ news_score = Recency × 0.4 + Frequency × 0.3 + Sentiment × 0.2 + Disclosure �
 
 | 작업 | 주기 | 설정 키 |
 |------|------|---------|
-| 한국 뉴스 (Naver) | 1분 | `collection_interval_kr` |
+| 한국 뉴스 (Naver) | 5분 | `collection_interval_kr` |
+| 한국 RSS | 5분 | `collection_interval_kr` |
 | DART 공시 | 5분 | `collection_interval_dart` |
-| 미국 뉴스 (Finnhub) | 3분 | `collection_interval_us` |
+| 미국 뉴스 (Finnhub) | 5분 | `collection_interval_us` |
 
 > 수집 주기는 환경 변수로도 설정 가능합니다 (`COLLECTION_INTERVAL_KR`, `COLLECTION_INTERVAL_DART`, `COLLECTION_INTERVAL_US`).
 
@@ -528,3 +502,4 @@ news_score = Recency × 0.4 + Frequency × 0.3 + Sentiment × 0.2 + Disclosure �
 | 날짜 | 변경 내용 |
 |------|----------|
 | 2026-02-22 | 최초 작성 — 기존 하드코딩된 수집 기준을 문서화 |
+| 2026-02-22 | 중복 정리 — Naver 10→20종목, KR RSS 10→5개, US RSS/NewsAPI 제거, 수집주기 통일(5분) |

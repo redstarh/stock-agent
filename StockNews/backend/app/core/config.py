@@ -50,9 +50,9 @@ class Settings(BaseSettings):
     log_level: str = "DEBUG"
 
     # Collection Intervals (minutes)
-    collection_interval_kr: int = 1  # Korean news (Naver/RSS)
+    collection_interval_kr: int = 5  # Korean news (Naver/RSS)
     collection_interval_dart: int = 5  # DART disclosures (rate limited)
-    collection_interval_us: int = 3  # US news (Finnhub/NewsAPI)
+    collection_interval_us: int = 5  # US news (Finnhub)
 
     # CORS
     cors_origins: list[str] = ["http://localhost:5173"]
