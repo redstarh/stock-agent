@@ -1,7 +1,10 @@
 """뉴스 수집 파이프라인 테스트."""
 
+from unittest.mock import AsyncMock
 
 import pytest
+
+from app.processing.article_scraper import ScrapeResult
 
 
 @pytest.fixture
@@ -36,6 +39,12 @@ def mock_pipeline_deps(monkeypatch):
         lambda sys, usr, **kw: '{"sentiment": "positive", "score": 0.8, "confidence": 0.9, "themes": [], "summary": "테스트 요약", "kr_impact": []}',
     )
 
+    # Mock article scraper (no body)
+    monkeypatch.setattr(
+        "app.processing.article_scraper.ArticleScraper.scrape_one",
+        AsyncMock(return_value=ScrapeResult(url="", body=None)),
+    )
+
     # Mock Redis (unavailable)
     monkeypatch.setattr(
         "app.collectors.pipeline._get_redis_client",
@@ -54,15 +63,10 @@ class TestProcessCollectedItems:
         assert result == 0
 
     @pytest.mark.asyncio
-    async def test_processes_and_saves_items(self, db_session, sample_items, mock_pipeline_deps, monkeypatch):
+    async def test_processes_and_saves_items(self, db_session, sample_items, mock_pipeline_deps):
         """아이템을 처리하고 DB에 저장."""
         from app.collectors.pipeline import process_collected_items
         from app.models.news_event import NewsEvent
-
-        # Mock article scraper (no body)
-        async def mock_scrape(items):
-            return {item.get("source_url", ""): None for item in items}
-        monkeypatch.setattr("app.collectors.pipeline._scrape_articles", mock_scrape)
 
         count = await process_collected_items(db_session, sample_items, market="KR")
 
@@ -80,13 +84,9 @@ class TestProcessCollectedItems:
         assert event.news_score > 0
 
     @pytest.mark.asyncio
-    async def test_dedup_filters_duplicates(self, db_session, sample_items, mock_pipeline_deps, monkeypatch):
+    async def test_dedup_filters_duplicates(self, db_session, sample_items, mock_pipeline_deps):
         """중복 아이템 필터링."""
         from app.collectors.pipeline import process_collected_items
-
-        async def mock_scrape(items):
-            return {item.get("source_url", ""): None for item in items}
-        monkeypatch.setattr("app.collectors.pipeline._scrape_articles", mock_scrape)
 
         # First batch
         count1 = await process_collected_items(db_session, sample_items, market="KR")
@@ -137,10 +137,6 @@ class TestProcessCollectedItems:
 
         monkeypatch.setattr("app.collectors.pipeline.analyze_news", failing_analyze)
 
-        async def mock_scrape(items):
-            return {item.get("source_url", ""): None for item in items}
-        monkeypatch.setattr("app.collectors.pipeline._scrape_articles", mock_scrape)
-
         count = await process_collected_items(db_session, items, market="KR")
         assert count == 2  # Both saved, failed one gets neutral fallback
 
@@ -163,9 +159,11 @@ class TestProcessCollectedItems:
             lambda sys, usr, **kw: '{"sentiment": "positive", "score": 0.95, "confidence": 0.99, "themes": [], "summary": "테스트", "kr_impact": []}',
         )
 
-        async def mock_scrape(items):
-            return {item.get("source_url", ""): None for item in items}
-        monkeypatch.setattr("app.collectors.pipeline._scrape_articles", mock_scrape)
+        # Mock article scraper (no body)
+        monkeypatch.setattr(
+            "app.processing.article_scraper.ArticleScraper.scrape_one",
+            AsyncMock(return_value=ScrapeResult(url="", body=None)),
+        )
 
         count = await process_collected_items(db_session, [sample_items[0]], market="KR")
         assert count == 1
@@ -197,3 +195,82 @@ class TestMapStockCode:
         from app.collectors.pipeline import _map_stock_code
         result = _map_stock_code({"stock_code": "", "title": "일반 경제 뉴스", "market": "KR"})
         assert result == ""
+
+
+class TestFastPathCheck:
+    """_fast_path_check() 테스트."""
+
+    def test_kr_negative_keyword_detected(self):
+        """KR 부정 키워드 → (negative, score) 반환."""
+        from app.collectors.pipeline import _fast_path_check
+        result = _fast_path_check("삼성전자 파산 신청", "KR")
+        assert result is not None
+        assert result[0] == "negative"
+        assert result[1] >= 80.0
+
+    def test_kr_positive_keyword_detected(self):
+        """KR 긍정 키워드 → (positive, score) 반환."""
+        from app.collectors.pipeline import _fast_path_check
+        result = _fast_path_check("삼성전자 영업이익 사상 최대", "KR")
+        assert result is not None
+        assert result[0] == "positive"
+        assert result[1] >= 80.0
+
+    def test_us_negative_keyword_detected(self):
+        """US 부정 키워드 → case-insensitive 매칭."""
+        from app.collectors.pipeline import _fast_path_check
+        result = _fast_path_check("NVDA Files for Bankruptcy Protection", "US")
+        assert result is not None
+        assert result[0] == "negative"
+
+    def test_us_positive_keyword_detected(self):
+        """US 긍정 키워드 매칭."""
+        from app.collectors.pipeline import _fast_path_check
+        result = _fast_path_check("AAPL beats expectations in Q4 earnings", "US")
+        assert result is not None
+        assert result[0] == "positive"
+
+    def test_no_keyword_returns_none(self):
+        """키워드 없으면 None."""
+        from app.collectors.pipeline import _fast_path_check
+        assert _fast_path_check("삼성전자 주가 소폭 상승", "KR") is None
+        assert _fast_path_check("AAPL stock rises slightly", "US") is None
+
+    @pytest.mark.asyncio
+    async def test_fast_path_publishes_before_llm(self, db_session, monkeypatch):
+        """Fast-path 키워드 매칭 시 Redis에 즉시 발행."""
+        import fakeredis
+
+        from app.collectors.pipeline import process_collected_items
+
+        fake_redis = fakeredis.FakeRedis()
+        pubsub = fake_redis.pubsub()
+        pubsub.subscribe("news_breaking_kr")
+
+        monkeypatch.setattr("app.collectors.pipeline._get_redis_client", lambda: fake_redis)
+        monkeypatch.setattr(
+            "app.processing.unified_analyzer.call_llm",
+            lambda sys, usr, **kw: '{"sentiment": "negative", "score": -0.9, "confidence": 0.95, "themes": [], "summary": "파산 뉴스", "kr_impact": []}',
+        )
+        monkeypatch.setattr(
+            "app.processing.article_scraper.ArticleScraper.scrape_one",
+            AsyncMock(return_value=ScrapeResult(url="", body=None)),
+        )
+
+        items = [{
+            "title": "삼성전자 파산 신청 공시",
+            "source_url": "https://example.com/breaking",
+            "source": "naver",
+            "market": "KR",
+            "stock_code": "005930",
+            "stock_name": "삼성전자",
+        }]
+
+        count = await process_collected_items(db_session, items, market="KR")
+        assert count == 1
+
+        # Verify at least one message was published to the breaking channel
+        msg = pubsub.get_message()  # subscribe confirmation
+        msg = pubsub.get_message()  # first real message (fast-path)
+        assert msg is not None
+        assert msg["type"] == "message"

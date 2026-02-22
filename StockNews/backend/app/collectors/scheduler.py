@@ -41,25 +41,47 @@ KR_SEARCH_QUERIES = _load_kr_search_queries()
 
 
 def _collect_kr_news_job():
-    """한국 뉴스 수집 작업 (Naver)."""
-    logger.info("Korean news collection started")
+    """한국 뉴스 통합 수집 작업 (Naver + RSS 병합 후 단일 파이프라인).
+
+    여러 수집기 결과를 병합하여 교차 수집기 URL/제목 중복을 제거합니다.
+    """
+    logger.info("Korean news collection started (merged)")
 
     async def _run():
         from app.collectors.naver import NaverCollector
         from app.collectors.pipeline import process_collected_items
         from app.core.database import SessionLocal
 
-        collector = NaverCollector()
-        all_items = []
+        all_items: list[dict] = []
 
+        # 1. Naver 수집
+        naver = NaverCollector()
         for query, stock_code in KR_SEARCH_QUERIES:
             try:
-                items = await collector.collect(query=query, stock_code=stock_code, market="KR")
+                items = await naver.collect(query=query, stock_code=stock_code, market="KR")
                 all_items.extend(items)
             except Exception as e:
                 logger.warning("Naver collect failed for %s: %s", query, e)
 
+        # 2. KR RSS 수집 (설정된 경우)
+        feeds = _load_rss_feeds("korean")
+        if feeds:
+            from app.collectors.rss import RssCollector
+            rss = RssCollector()
+            for feed in feeds:
+                try:
+                    items = await rss.collect(
+                        feed_url=feed["url"],
+                        source_name=feed.get("source_name", "rss"),
+                        market=feed.get("market", "KR"),
+                    )
+                    all_items.extend(items)
+                except Exception as e:
+                    logger.warning("RSS collect failed for %s: %s", feed["url"], e)
+
+        # 3. 병합된 아이템을 단일 파이프라인으로 처리
         if all_items:
+            logger.info("Korean merged: %d items from all sources", len(all_items))
             db = SessionLocal()
             try:
                 count = await process_collected_items(db, all_items, market="KR")
@@ -182,21 +204,16 @@ def _collect_rss_job(market_key: str):
         logger.error("RSS %s collection failed: %s", market_key, e)
 
 
-def _collect_kr_rss_job():
-    """한국 RSS 피드 수집 작업."""
-    _collect_rss_job("korean")
-
-
 def create_scheduler() -> BackgroundScheduler:
     """수집 스케줄러 생성 및 job 등록."""
     scheduler = BackgroundScheduler()
 
-    # Korean news collection job
+    # Korean news collection job (Naver + RSS 통합)
     scheduler.add_job(
         _collect_kr_news_job,
         trigger=IntervalTrigger(minutes=settings.collection_interval_kr),
         id="kr_news_collection",
-        name="Korean News Collection Job",
+        name="Korean News Collection Job (Merged)",
         replace_existing=True,
         max_instances=1,
         misfire_grace_time=30,
@@ -223,17 +240,5 @@ def create_scheduler() -> BackgroundScheduler:
         max_instances=1,
         misfire_grace_time=30,
     )
-
-    # Korean RSS feed collection job
-    if _load_rss_feeds("korean"):
-        scheduler.add_job(
-            _collect_kr_rss_job,
-            trigger=IntervalTrigger(minutes=settings.collection_interval_kr),
-            id="kr_rss_collection",
-            name="Korean RSS Collection Job",
-            replace_existing=True,
-            max_instances=1,
-            misfire_grace_time=30,
-        )
 
     return scheduler

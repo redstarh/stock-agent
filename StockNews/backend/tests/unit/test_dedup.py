@@ -94,3 +94,32 @@ class TestDedup:
         result = deduplicate(db_session, batch)
         assert len(result) == 2
         assert all(item["source_url"] != "https://news.naver.com/existing" for item in result)
+
+    def test_deduplicate_same_title_different_url_in_batch(self, db_session):
+        """배치 내 같은 제목 + 다른 URL → 두 번째 제거 (교차 수집기 중복)."""
+        from app.processing.dedup import deduplicate
+
+        batch = [
+            {"title": "삼성전자 실적 발표", "source_url": "https://naver.com/1",
+             "market": "KR", "stock_code": "005930", "source": "naver"},
+            {"title": "삼성전자 실적 발표", "source_url": "https://rss.com/1",
+             "market": "KR", "stock_code": "005930", "source": "rss"},
+        ]
+
+        result = deduplicate(db_session, batch)
+        assert len(result) == 1
+        assert result[0]["source_url"] == "https://naver.com/1"
+
+    def test_deduplicate_same_url_in_batch(self, db_session):
+        """배치 내 같은 URL → 두 번째 제거."""
+        from app.processing.dedup import deduplicate
+
+        batch = [
+            {"title": "뉴스 A", "source_url": "https://naver.com/same",
+             "market": "KR", "stock_code": "005930", "source": "naver"},
+            {"title": "뉴스 B", "source_url": "https://naver.com/same",
+             "market": "KR", "stock_code": "005930", "source": "naver"},
+        ]
+
+        result = deduplicate(db_session, batch)
+        assert len(result) == 1
