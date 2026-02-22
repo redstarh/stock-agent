@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import verify_api_key
@@ -13,6 +13,8 @@ from app.schemas.collect import (
     CollectionQualityResponse,
     QualitySummary,
     SourceQualityStats,
+    StockCollectRequest,
+    StockCollectResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,6 +65,84 @@ async def collect_kr_news(
         saved = await process_collected_items(db, all_items, market="KR")
 
     return {"status": "ok", "collected": len(all_items), "saved": saved}
+
+
+@router.post("/stock", response_model=StockCollectResponse)
+@limiter.limit("10/minute")
+async def collect_stock_news(
+    request: Request,
+    response: Response,
+    body: StockCollectRequest,
+    db: Session = Depends(get_db),
+):
+    """종목별 수동 뉴스 수집.
+
+    특정 종목에 대해 즉시 뉴스를 수집합니다.
+    add_to_scope=true이면 일일 수집 대상에도 추가합니다.
+    """
+    from app.collectors.pipeline import process_collected_items
+
+    all_items = []
+
+    if body.market == "KR":
+        from app.collectors.naver import NaverCollector
+
+        collector = NaverCollector()
+        try:
+            items = await collector.collect(
+                query=body.query, stock_code=body.stock_code, market="KR"
+            )
+            all_items.extend(items)
+        except Exception as e:
+            logger.warning("Manual KR collect failed for %s: %s", body.query, e)
+    elif body.market == "US":
+        from app.collectors.finnhub import FinnhubCollector
+
+        if not settings.finnhub_api_key:
+            return StockCollectResponse(
+                status="skipped",
+                query=body.query,
+                stock_code=body.stock_code,
+                collected=0,
+                saved=0,
+                added_to_scope=False,
+            )
+        collector = FinnhubCollector()
+        try:
+            items = await collector.collect_company_news(symbol=body.stock_code)
+            all_items.extend(items)
+        except Exception as e:
+            logger.warning("Manual US collect failed for %s: %s", body.stock_code, e)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported market: {body.market}")
+
+    saved = 0
+    if all_items:
+        saved = await process_collected_items(db, all_items, market=body.market)
+
+    added_to_scope = False
+    if body.add_to_scope:
+        from app.core.scope_loader import reload_scope
+        from app.core.scope_writer import add_korean_stock, add_kr_search_query, add_us_stock
+
+        if body.market == "KR":
+            added_q = add_kr_search_query(body.query, body.stock_code)
+            added_s = add_korean_stock(body.query, body.stock_code)
+            added_to_scope = added_q or added_s
+        elif body.market == "US":
+            added_to_scope = add_us_stock(body.stock_code, body.query)
+
+        if added_to_scope:
+            reload_scope()
+
+    return StockCollectResponse(
+        status="ok",
+        query=body.query,
+        stock_code=body.stock_code,
+        collected=len(all_items),
+        saved=saved,
+        added_to_scope=added_to_scope,
+    )
 
 
 @router.post("/us")

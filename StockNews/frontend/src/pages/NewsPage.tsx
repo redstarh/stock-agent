@@ -5,6 +5,7 @@ import { useMarket } from '../contexts/MarketContext';
 import FilterPanel, { DEFAULT_FILTERS, type NewsFilters } from '../components/common/FilterPanel';
 import Loading from '../components/common/Loading';
 import NewsList from '../components/news/NewsList';
+import { useManualCollect } from '../hooks/useManualCollect';
 
 const THEMES = ['반도체', '2차전지', 'AI/로봇', '바이오', '자동차', '에너지', '금융', '엔터'];
 
@@ -14,6 +15,10 @@ export default function NewsPage() {
   const initialFilters: NewsFilters = { ...DEFAULT_FILTERS, dateFrom: today, dateTo: today };
   const [filters, setFilters] = useState<NewsFilters>(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState<NewsFilters>(initialFilters);
+  const [collectQuery, setCollectQuery] = useState('');
+  const [collectCode, setCollectCode] = useState('');
+  const [addToScope, setAddToScope] = useState(false);
+  const manualCollect = useManualCollect();
 
   const handleApply = useCallback(() => {
     setAppliedFilters(filters);
@@ -62,6 +67,59 @@ export default function NewsPage() {
         onApply={handleApply}
         showStockSearch={true}
       />
+
+      {/* 수동 수집 섹션 */}
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <h3 className="mb-3 font-semibold text-gray-700">수동 수집</h3>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="text"
+            placeholder="종목명"
+            value={collectQuery}
+            onChange={(e) => setCollectQuery(e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+          />
+          <input
+            type="text"
+            placeholder="종목코드"
+            value={collectCode}
+            onChange={(e) => setCollectCode(e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+          />
+          <label className="flex items-center gap-1.5 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={addToScope}
+              onChange={(e) => setAddToScope(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            일일 수집에 추가
+          </label>
+          <button
+            onClick={() =>
+              manualCollect.mutate({
+                query: collectQuery,
+                stock_code: collectCode,
+                market,
+                add_to_scope: addToScope,
+              })
+            }
+            disabled={!collectQuery || !collectCode || manualCollect.isPending}
+            className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            {manualCollect.isPending ? '수집 중...' : '수집'}
+          </button>
+        </div>
+        {manualCollect.isSuccess && manualCollect.data && (
+          <p className="mt-2 text-sm text-green-600">
+            수집 완료: {manualCollect.data.collected}건 수집, {manualCollect.data.saved}건 저장
+            {manualCollect.data.added_to_scope && ' (일일 수집에 추가됨)'}
+          </p>
+        )}
+        {manualCollect.isError && (
+          <p className="mt-2 text-sm text-red-500">수집 실패: {(manualCollect.error as Error).message}</p>
+        )}
+      </div>
 
       <section>
         <div className="mb-3 flex items-center justify-between">

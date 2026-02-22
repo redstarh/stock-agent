@@ -4,7 +4,7 @@ KOSPI/KOSDAQ 주요 종목 사전 기반 매핑.
 종목 사전은 docs/NewsCollectionScope.md에서 로드하며, fallback으로 내장 사전 사용.
 """
 
-from app.core.scope_loader import load_scope
+from app.core.scope_loader import load_scope, register_reload_callback
 
 # 기본값 (scope 파일 미존재 시 fallback)
 _DEFAULT_STOCK_DICT: dict[str, str] = {
@@ -100,6 +100,26 @@ _CODE_TO_NAME: dict[str, str] = {}
 for _name, _code in STOCK_DICT.items():
     if _code not in _CODE_TO_NAME:
         _CODE_TO_NAME[_code] = _name
+
+
+def _on_scope_reload(data: dict) -> None:
+    """Scope 리로드 시 종목 사전 갱신."""
+    global STOCK_DICT, _ENGLISH_MAP, _CODE_TO_NAME
+    stocks = data.get("korean_stocks", {})
+    if not stocks:
+        return
+    STOCK_DICT = stocks
+    _ENGLISH_MAP = {
+        name.upper(): code for name, code in STOCK_DICT.items()
+        if any(c.isascii() and c.isalpha() for c in name)
+    }
+    _CODE_TO_NAME = {}
+    for name, code in STOCK_DICT.items():
+        if code not in _CODE_TO_NAME:
+            _CODE_TO_NAME[code] = name
+
+
+register_reload_callback(_on_scope_reload)
 
 
 def code_to_name(code: str) -> str:

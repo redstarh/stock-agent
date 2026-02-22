@@ -13,6 +13,8 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
+_reload_callbacks: list[callable] = []
+
 
 def _find_scope_file() -> Path | None:
     """프로젝트 루트 기준 NewsCollectionScope.md 경로 탐색."""
@@ -52,7 +54,18 @@ def load_scope() -> dict:
     return {}
 
 
+def register_reload_callback(fn: callable) -> None:
+    """reload_scope() 호출 시 실행될 콜백 등록."""
+    _reload_callbacks.append(fn)
+
+
 def reload_scope() -> dict:
-    """캐시를 무효화하고 다시 로드."""
+    """캐시를 무효화하고 다시 로드. 등록된 콜백 실행."""
     load_scope.cache_clear()
-    return load_scope()
+    data = load_scope()
+    for cb in _reload_callbacks:
+        try:
+            cb(data)
+        except Exception as e:
+            logger.warning("Reload callback failed: %s", e)
+    return data

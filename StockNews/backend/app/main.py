@@ -13,6 +13,8 @@ import app.models  # noqa: F401 — register all models with Base.metadata
 from app.api.health import router as health_router
 from app.api.prediction import router as prediction_router
 from app.api.router import api_v1_router, api_v2_router
+from app.api.scheduler import router as scheduler_router
+from app.api.strategy import router as strategy_router
 from app.api.summary import router as summary_router
 from app.api.versions import router as versions_router
 from app.api.websocket import router as ws_router
@@ -48,15 +50,44 @@ async def lifespan(application: FastAPI):
     # Startup: 테이블 생성 (MVP — production에서는 Alembic 사용)
     Base.metadata.create_all(bind=engine)
 
+    # Startup: 초기 전략 시딩 (V1)
+    from app.core.database import SessionLocal
+    from app.processing.strategy_config import StrategyConfig
+    from app.processing.strategy_registry import StrategyRegistry
+
+    strategy_db = SessionLocal()
+    try:
+        registry = StrategyRegistry()
+        active = registry.get_active("KR", strategy_db)
+        if not active:
+            v1 = StrategyConfig.default_v1()
+            sid = registry.save(v1, "KR", strategy_db)
+            registry.activate(sid, strategy_db)
+            # Also seed for US market
+            us_sid = registry.save(v1, "US", strategy_db)
+            registry.activate(us_sid, strategy_db)
+            logger.info("Seeded default V1 strategy for KR and US markets")
+        else:
+            logger.info("Active strategy already exists: %s v%s", active.strategy_name, active.strategy_version)
+    except Exception as e:
+        logger.warning("Strategy seeding failed: %s", e)
+    finally:
+        strategy_db.close()
+
     # Startup: 수집 스케줄러 시작
-    from app.collectors.scheduler import create_scheduler
+    from app.collectors.scheduler import create_scheduler, run_startup_catchup
     from app.collectors.verification_scheduler import register_verification_jobs
+    from app.core.scheduler_state import set_scheduler
 
     scheduler = create_scheduler()
     register_verification_jobs(scheduler)
     scheduler.start()
+    set_scheduler(scheduler)
     logger.info("News collection scheduler started")
     logger.info("Verification scheduler jobs registered")
+
+    # Startup: 08:00 KST 이후 서버 시작 시 캐치업 (종목 선정 → 수집 → 예측)
+    run_startup_catchup()
 
     yield
 
@@ -97,7 +128,9 @@ app.include_router(versions_router)
 app.include_router(api_v1_router)
 app.include_router(api_v2_router)
 app.include_router(prediction_router)
+app.include_router(strategy_router)
 app.include_router(summary_router)
+app.include_router(scheduler_router, prefix="/api/v1")
 app.include_router(ws_router)
 
 # Prometheus metrics (after routers to avoid middleware interference)

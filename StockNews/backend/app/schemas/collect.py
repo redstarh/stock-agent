@@ -26,3 +26,21 @@ class CollectionQualityResponse(BaseModel):
     """수집 품질 API 응답."""
     summary: QualitySummary
     sources: dict[str, SourceQualityStats]
+
+
+class StockCollectRequest(BaseModel):
+    """종목별 수동 수집 요청."""
+    query: str
+    stock_code: str
+    market: str = "KR"
+    add_to_scope: bool = False
+
+
+class StockCollectResponse(BaseModel):
+    """종목별 수동 수집 응답."""
+    status: str
+    query: str
+    stock_code: str
+    collected: int
+    saved: int
+    added_to_scope: bool

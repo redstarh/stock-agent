@@ -3,7 +3,7 @@
 종목 사전은 docs/NewsCollectionScope.md에서 로드하며, fallback으로 내장 사전 사용.
 """
 
-from app.core.scope_loader import load_scope
+from app.core.scope_loader import load_scope, register_reload_callback
 
 # 기본값 (scope 파일 미존재 시 fallback)
 _DEFAULT_US_STOCK_MAP: dict[str, str] = {
@@ -73,6 +73,19 @@ def _load_us_stock_map() -> dict[str, str]:
 US_STOCK_MAP: dict[str, str] = _load_us_stock_map()
 
 _REVERSE_MAP = {v.lower(): k for k, v in US_STOCK_MAP.items()}
+
+
+def _on_scope_reload(data: dict) -> None:
+    """Scope 리로드 시 미국 종목 사전 갱신."""
+    global US_STOCK_MAP, _REVERSE_MAP
+    stocks = data.get("us_stocks", {})
+    if not stocks:
+        return
+    US_STOCK_MAP = stocks
+    _REVERSE_MAP = {v.lower(): k for k, v in US_STOCK_MAP.items()}
+
+
+register_reload_callback(_on_scope_reload)
 
 
 def ticker_to_name(ticker: str) -> str | None:
