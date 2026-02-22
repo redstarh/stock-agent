@@ -191,8 +191,8 @@ export function fetchAdvanEvaluation(runId: number): Promise<AdvanEvalRunRespons
   return apiClient.get<AdvanEvalRunResponse>(`/advan/evaluate/${runId}`);
 }
 
-export function fetchAdvanGuardrails(runId: number): Promise<any> {
-  return apiClient.get<any>(`/advan/evaluate/${runId}/guardrails`);
+export function fetchAdvanGuardrails(runId: number): Promise<Record<string, unknown>> {
+  return apiClient.get<Record<string, unknown>>(`/advan/evaluate/${runId}/guardrails`);
 }
 
 // --- Optimization ---

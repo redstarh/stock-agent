@@ -196,7 +196,7 @@ export interface AdvanSimulationRun {
   auc_score: number | null;
   f1_score: number | null;
   avg_excess_return: number | null;
-  by_event_type_metrics: Record<string, any> | null;
+  by_event_type_metrics: Record<string, unknown> | null;
   duration_seconds: number;
   error_message: string | null;
   created_at: string;
@@ -246,7 +246,7 @@ export interface AdvanCompareItem {
   auc_score: number | null;
   f1_score: number | null;
   avg_excess_return: number | null;
-  by_event_type_metrics: Record<string, any> | null;
+  by_event_type_metrics: Record<string, unknown> | null;
 }
 
 export interface AdvanCompareResponse {
@@ -264,9 +264,9 @@ export interface AdvanEvalMetrics {
   avg_excess_return: number | null;
   total_predictions: number;
   abstain_rate: number;
-  by_event_type: Record<string, any> | null;
-  by_direction: Record<string, any> | null;
-  robustness_metrics: Record<string, any> | null;
+  by_event_type: Record<string, unknown> | null;
+  by_direction: Record<string, unknown> | null;
+  robustness_metrics: Record<string, unknown> | null;
 }
 
 export interface AdvanEvalRunResponse {

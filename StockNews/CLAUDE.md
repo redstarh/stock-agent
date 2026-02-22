@@ -111,6 +111,31 @@ cd frontend && npx vitest run                          # Run frontend tests
 cd frontend && npm run dev                             # Start dev server (port 5173)
 ```
 
+### CI Lint Checks (push 전 필수 실행)
+
+CI workflow(`.github/workflows/test.yml`)에서 lint 통과가 필수입니다. 코드 변경 후 push 전에 반드시 확인하세요.
+
+```bash
+# Backend lint (ruff)
+cd backend && .venv/bin/ruff check app/
+
+# Frontend lint (eslint)
+cd frontend && npm run lint
+```
+
+**자주 나오는 lint 에러와 해결법:**
+
+| 에러 | 해결 |
+|------|------|
+| `I001` Import un-sorted | `ruff check app/ --fix` 자동 수정 |
+| `F401` Unused import | 미사용 import 제거 |
+| `E741` Ambiguous variable `l` | `lb`, `label` 등으로 rename |
+| `E712` `== True` comparison | SQLAlchemy: `.is_(True)` 사용 |
+| `B904` raise without `from` | `raise ... from None` 추가 |
+| `@typescript-eslint/no-explicit-any` | `unknown` 또는 구체적 타입 사용 |
+| `@typescript-eslint/no-unused-vars` | 미사용 변수/import 제거 |
+| `react-hooks/set-state-in-effect` | `useEffect+setState` → `useMemo` 파생 상태 |
+
 ## Task Execution Best Practices
 
 When working on multiple tasks in this project, follow these guidelines:

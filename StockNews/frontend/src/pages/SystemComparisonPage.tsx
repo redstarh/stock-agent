@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useMarket } from '../contexts/MarketContext';
 import {
   useAdvanRuns,
@@ -17,14 +17,13 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Cell,
   CartesianGrid,
 } from 'recharts';
 
 export default function SystemComparisonPage() {
   const { market } = useMarket();
-  const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
-  const [compareRunId, setCompareRunId] = useState<number | null>(null);
+  const [userSelectedRunId, setUserSelectedRunId] = useState<number | null>(null);
+  const [userCompareRunId, setUserCompareRunId] = useState<number | null>(null);
 
   // Advan system data
   const runsQuery = useAdvanRuns({ market });
@@ -35,25 +34,30 @@ export default function SystemComparisonPage() {
     [runsQuery.data]
   );
 
-  // Auto-select latest run
-  useEffect(() => {
-    if (!selectedRunId && completedRuns.length > 0) {
-      const latestRun = completedRuns.sort((a, b) => b.id - a.id)[0];
-      setSelectedRunId(latestRun.id);
+  // Derive selected run: user's choice or latest completed
+  const selectedRunId = useMemo(() => {
+    if (userSelectedRunId !== null && completedRuns.some((r) => r.id === userSelectedRunId)) {
+      return userSelectedRunId;
     }
-  }, [completedRuns, selectedRunId]);
+    if (completedRuns.length > 0) {
+      return [...completedRuns].sort((a, b) => b.id - a.id)[0].id;
+    }
+    return null;
+  }, [userSelectedRunId, completedRuns]);
 
-  // Auto-select compare run (second-latest or first that's not selected)
-  useEffect(() => {
-    if (selectedRunId && compareRunId === null && completedRuns.length >= 2) {
+  // Derive compare run: user's choice or second-latest
+  const compareRunId = useMemo(() => {
+    if (userCompareRunId !== null && completedRuns.some((r) => r.id === userCompareRunId)) {
+      return userCompareRunId;
+    }
+    if (selectedRunId && completedRuns.length >= 2) {
       const otherRuns = completedRuns.filter((r) => r.id !== selectedRunId);
       if (otherRuns.length > 0) {
-        // Pick the latest among the others
-        const compareRun = otherRuns.sort((a, b) => b.id - a.id)[0];
-        setCompareRunId(compareRun.id);
+        return [...otherRuns].sort((a, b) => b.id - a.id)[0].id;
       }
     }
-  }, [completedRuns, selectedRunId, compareRunId]);
+    return null;
+  }, [userCompareRunId, selectedRunId, completedRuns]);
 
   // Derive selected run from completedRuns
   const selectedRun = useMemo(
@@ -92,7 +96,7 @@ export default function SystemComparisonPage() {
             <label className="text-sm font-medium text-gray-700">Advan 실행:</label>
             <select
               value={selectedRunId ?? ''}
-              onChange={(e) => setSelectedRunId(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) => setUserSelectedRunId(e.target.value ? Number(e.target.value) : null)}
               className="rounded-lg border px-3 py-1 text-sm"
             >
               {completedRuns.map((run) => (
@@ -108,7 +112,7 @@ export default function SystemComparisonPage() {
             <label className="text-sm font-medium text-gray-700">비교 실행:</label>
             <select
               value={compareRunId ?? ''}
-              onChange={(e) => setCompareRunId(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) => setUserCompareRunId(e.target.value ? Number(e.target.value) : null)}
               className="rounded-lg border px-3 py-1 text-sm"
             >
               <option value="">선택 안함</option>
@@ -193,13 +197,12 @@ function AdvanAccuracyCard({
   advanDetail,
   totalRuns,
   selectedRun,
-  isPrimary,
 }: {
   hasRun: boolean;
   advanDetail: AdvanSimulationRunDetail | undefined;
   totalRuns: number;
   selectedRun: { id: number; name: string } | null;
-  isPrimary: boolean;
+  isPrimary?: boolean;
 }) {
   if (!hasRun) {
     return (

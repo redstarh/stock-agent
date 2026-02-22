@@ -74,7 +74,7 @@ def get_active_policy(db: Session) -> AdvanPolicy | None:
     Returns:
         활성 정책 또는 None
     """
-    return db.query(AdvanPolicy).filter(AdvanPolicy.is_active == True).first()
+    return db.query(AdvanPolicy).filter(AdvanPolicy.is_active.is_(True)).first()
 
 
 def load_policy_params(policy: AdvanPolicy) -> dict:

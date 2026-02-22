@@ -4,14 +4,14 @@
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.advan.models import (
-    AdvanEvent,
     AdvanEvalRun,
+    AdvanEvent,
     AdvanFeatureDaily,
     AdvanLabel,
     AdvanPrediction,

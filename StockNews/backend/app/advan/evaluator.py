@@ -10,14 +10,12 @@ import math
 from collections import defaultdict
 from datetime import date
 
-from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from app.advan.models import (
     AdvanEvalRun,
     AdvanLabel,
     AdvanPrediction,
-    AdvanSimulationRun,
 )
 
 logger = logging.getLogger(__name__)

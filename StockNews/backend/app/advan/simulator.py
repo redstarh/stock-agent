@@ -9,7 +9,6 @@ import logging
 import time
 from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from app.advan.models import (
@@ -43,10 +42,6 @@ def _get_events_for_date(
     장전(전일 장마감 후 ~ 당일 장전) 이벤트만 포함.
     미래 누수 방지: target_date 이전 이벤트만.
     """
-    # 전일 장마감(15:30) ~ 당일 시작까지의 이벤트 + 당일 장전 이벤트
-    cutoff_start = datetime.combine(target_date - timedelta(days=1), datetime.min.time().replace(hour=15, minute=30))
-    cutoff_end = datetime.combine(target_date, datetime.min.time().replace(hour=9, minute=0))
-
     # 더 넓은 범위: 최근 3일간 이벤트 (컨텍스트 제공)
     lookback = datetime.combine(target_date - timedelta(days=3), datetime.min.time())
 
@@ -255,7 +250,11 @@ def run_simulation(
         abstain_count = 0
 
         from app.advan.event_retriever import retrieve_similar_events
-        from app.advan.llm_forecaster import predict_stock, predict_stock_heuristic, predict_stock_heuristic_v2
+        from app.advan.llm_forecaster import (
+            predict_stock,
+            predict_stock_heuristic,
+            predict_stock_heuristic_v2,
+        )
 
         use_v2 = policy_params.get("template_config", {}).get("use_v2_heuristic", False)
 

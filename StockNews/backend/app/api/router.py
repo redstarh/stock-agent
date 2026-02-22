@@ -2,15 +2,15 @@
 
 from fastapi import APIRouter
 
+from app.advan.api import router as advan_router
 from app.api.collect import router as collect_router
 from app.api.news import router as news_router
+from app.api.prediction_context import prediction_llm_router
+from app.api.prediction_context import router as prediction_context_router
 from app.api.stocks import router as stocks_router
 from app.api.themes import router as themes_router
 from app.api.training import router as training_router
 from app.api.verification import router as verification_router
-from app.api.prediction_context import router as prediction_context_router
-from app.api.prediction_context import prediction_llm_router
-from app.advan.api import router as advan_router
 
 # API v1 라우터
 api_v1_router = APIRouter(prefix="/api/v1")

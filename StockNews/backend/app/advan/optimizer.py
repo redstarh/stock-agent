@@ -9,11 +9,11 @@ import logging
 import random
 import time
 from copy import deepcopy
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.advan.models import AdvanEvalRun, AdvanPolicy, AdvanSimulationRun
+from app.advan.models import AdvanPolicy, AdvanSimulationRun
 
 logger = logging.getLogger(__name__)
 
@@ -266,7 +266,7 @@ def run_optimization(
 
     if should_promote and best["policy_id"] != base_policy_id:
         # 최적 정책을 활성화 (기존 활성 해제)
-        db.query(AdvanPolicy).filter(AdvanPolicy.is_active == True).update({"is_active": False})
+        db.query(AdvanPolicy).filter(AdvanPolicy.is_active.is_(True)).update({"is_active": False})
         db.query(AdvanPolicy).filter(AdvanPolicy.id == best["policy_id"]).update({
             "is_active": True,
             "latest_brier": best.get("brier"),

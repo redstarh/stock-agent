@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.core.pubsub import subscribe_and_broadcast
-from app.core.redis import get_redis
+from app.core.redis import get_async_redis
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ async def _start_redis_subscriber():
     """Redis 구독 시작 (백그라운드)."""
     global _redis_task
     if _redis_task is None or _redis_task.done():
-        redis_client = get_redis()
+        redis_client = get_async_redis()
         _redis_task = asyncio.create_task(
             subscribe_and_broadcast(redis_client, broadcast)
         )

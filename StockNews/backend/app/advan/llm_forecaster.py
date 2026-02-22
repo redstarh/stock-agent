@@ -12,7 +12,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
-from app.advan.models import AdvanEvent, AdvanFeatureDaily, AdvanPrediction
+from app.advan.models import AdvanEvent, AdvanFeatureDaily
 from app.core.llm import call_llm
 
 logger = logging.getLogger(__name__)

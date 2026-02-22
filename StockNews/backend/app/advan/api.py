@@ -6,14 +6,12 @@
 
 import json
 import logging
-from datetime import date
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app.advan.models import (
-    AdvanEvalRun,
     AdvanEvent,
     AdvanLabel,
     AdvanPolicy,
@@ -25,7 +23,6 @@ from app.advan.schemas import (
     AdvanCompareResponse,
     AdvanEventListResponse,
     AdvanEventResponse,
-    AdvanEvalRunResponse,
     AdvanLabelResponse,
     AdvanPolicyCreate,
     AdvanPolicyListItem,
@@ -326,7 +323,7 @@ def get_run(run_id: int, db: Session = Depends(get_db)):
     return AdvanSimulationRunDetail(
         run=_run_to_response(run),
         predictions=[_prediction_to_response(p) for p in predictions],
-        labels=[_label_to_response(l) for l in labels],
+        labels=[_label_to_response(lb) for lb in labels],
         direction_stats=direction_stats,
     )
 
@@ -346,7 +343,7 @@ def run_by_stock(run_id: int, db: Session = Depends(get_db)):
     )
     pred_ids = [p.id for p in predictions]
     labels = db.query(AdvanLabel).filter(AdvanLabel.prediction_id.in_(pred_ids)).all() if pred_ids else []
-    label_map = {l.prediction_id: l for l in labels}
+    label_map = {lb.prediction_id: lb for lb in labels}
 
     # Group by ticker
     by_stock: dict[str, dict] = {}
@@ -691,18 +688,18 @@ def _prediction_to_response(p: AdvanPrediction) -> AdvanPredictionResponse:
     )
 
 
-def _label_to_response(l: AdvanLabel) -> AdvanLabelResponse:
+def _label_to_response(lb: AdvanLabel) -> AdvanLabelResponse:
     return AdvanLabelResponse(
-        id=l.id,
-        prediction_id=l.prediction_id,
-        ticker=l.ticker,
-        prediction_date=l.prediction_date,
-        horizon=l.horizon,
-        realized_ret=l.realized_ret,
-        excess_ret=l.excess_ret,
-        label=l.label,
-        is_correct=l.is_correct,
-        label_date=l.label_date,
+        id=lb.id,
+        prediction_id=lb.prediction_id,
+        ticker=lb.ticker,
+        prediction_date=lb.prediction_date,
+        horizon=lb.horizon,
+        realized_ret=lb.realized_ret,
+        excess_ret=lb.excess_ret,
+        label=lb.label,
+        is_correct=lb.is_correct,
+        label_date=lb.label_date,
     )
 
 
@@ -711,7 +708,7 @@ def _calc_direction_stats(
     labels: list[AdvanLabel],
 ) -> dict:
     """방향별 통계 계산."""
-    label_map = {l.prediction_id: l for l in labels}
+    label_map = {lb.prediction_id: lb for lb in labels}
     stats: dict[str, dict] = {}
 
     for pred in predictions:
@@ -724,7 +721,7 @@ def _calc_direction_stats(
         if label and label.is_correct:
             stats[direction]["correct"] += 1
 
-    for direction, s in stats.items():
+    for _direction, s in stats.items():
         s["accuracy"] = round(s["correct"] / s["total"], 4) if s["total"] > 0 else 0.0
 
     return stats

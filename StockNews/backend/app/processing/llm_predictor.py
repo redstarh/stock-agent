@@ -4,7 +4,6 @@ import json
 import logging
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.llm import call_llm
@@ -20,7 +19,7 @@ def _load_context(context_path: str | None = None) -> dict | None:
     """예측 컨텍스트 JSON 파일 로드."""
     path = context_path or DEFAULT_CONTEXT_PATH
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logger.warning("Failed to load prediction context from %s: %s", path, e)
@@ -184,7 +183,7 @@ def _parse_llm_response(text: str) -> dict:
         if match:
             data = json.loads(match.group())
         else:
-            raise ValueError(f"Cannot parse LLM response: {text[:200]}")
+            raise ValueError(f"Cannot parse LLM response: {text[:200]}") from None
 
     direction = data.get("direction", "neutral")
     if direction not in ("up", "down", "neutral"):

@@ -7,7 +7,6 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
-
 # ─── 이벤트 타입 상수 ───
 
 EVENT_TYPES = [

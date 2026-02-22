@@ -38,18 +38,18 @@ async def get_prediction_context(
 ):
     """현재 예측 컨텍스트 조회."""
     try:
-        with open(DEFAULT_CONTEXT_PATH, "r", encoding="utf-8") as f:
+        with open(DEFAULT_CONTEXT_PATH, encoding="utf-8") as f:
             context = json.load(f)
     except FileNotFoundError:
         raise HTTPException(
             status_code=404,
             detail="Prediction context not found. Run POST /prediction-context/rebuild first.",
-        )
+        ) from None
     except json.JSONDecodeError:
         raise HTTPException(
             status_code=500,
             detail="Prediction context file is corrupted.",
-        )
+        ) from None
 
     # If market filter is specified, filter market_conditions
     if market:

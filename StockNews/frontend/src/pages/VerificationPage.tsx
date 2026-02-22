@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useMarket } from '../contexts/MarketContext';
 import {
   useAdvanRuns,
@@ -16,19 +16,21 @@ import ThemeAccuracyBreakdown from '../components/verification/ThemeAccuracyBrea
 
 export default function VerificationPage() {
   const { market } = useMarket();
-  const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
+  const [userSelectedRunId, setUserSelectedRunId] = useState<number | null>(null);
 
   // Fetch all completed runs for the current market
   const runs = useAdvanRuns({ market, status: 'completed' });
 
-  // Auto-select the latest completed run on load
-  useEffect(() => {
-    if (!selectedRunId && runs.data && runs.data.length > 0) {
-      // Sort by id descending to get the latest run
-      const sortedRuns = [...runs.data].sort((a, b) => b.id - a.id);
-      setSelectedRunId(sortedRuns[0].id);
+  // Derive selected run: user's choice or latest completed
+  const selectedRunId = useMemo(() => {
+    if (userSelectedRunId !== null && runs.data?.some((r) => r.id === userSelectedRunId)) {
+      return userSelectedRunId;
     }
-  }, [runs.data, selectedRunId]);
+    if (runs.data && runs.data.length > 0) {
+      return [...runs.data].sort((a, b) => b.id - a.id)[0].id;
+    }
+    return null;
+  }, [userSelectedRunId, runs.data]);
 
   // Fetch detailed data for the selected run
   const runDetail = useAdvanRun(selectedRunId);
@@ -141,7 +143,7 @@ export default function VerificationPage() {
       avg_actual_change_pct: null,
       rise_index: null,
     }));
-  }, [byTheme.data]);
+  }, [byTheme.data, market]);
 
   const isLoading = runs.isLoading || runDetail.isLoading;
 
@@ -156,7 +158,7 @@ export default function VerificationPage() {
           <label className="text-sm text-gray-500">시뮬레이션 실행</label>
           <select
             value={selectedRunId ?? ''}
-            onChange={(e) => setSelectedRunId(e.target.value ? Number(e.target.value) : null)}
+            onChange={(e) => setUserSelectedRunId(e.target.value ? Number(e.target.value) : null)}
             className="rounded-lg border px-3 py-1.5 text-sm"
             disabled={!runs.data || runs.data.length === 0}
           >

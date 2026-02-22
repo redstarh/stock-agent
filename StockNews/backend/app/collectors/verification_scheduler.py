@@ -25,7 +25,9 @@ def _verify_kr_job():
             if log.status != "failed":
                 aggregate_theme_accuracy(db, target, "KR")
                 try:
-                    from app.processing.prediction_context_builder import build_and_save_prediction_context
+                    from app.processing.prediction_context_builder import (
+                        build_and_save_prediction_context,
+                    )
                     build_and_save_prediction_context(db, days=30)
                     logger.info("KR prediction context rebuilt")
                 except Exception as e:
@@ -57,7 +59,9 @@ def _verify_us_job():
             if log.status != "failed":
                 aggregate_theme_accuracy(db, target, "US")
                 try:
-                    from app.processing.prediction_context_builder import build_and_save_prediction_context
+                    from app.processing.prediction_context_builder import (
+                        build_and_save_prediction_context,
+                    )
                     build_and_save_prediction_context(db, days=30)
                     logger.info("US prediction context rebuilt")
                 except Exception as e:
