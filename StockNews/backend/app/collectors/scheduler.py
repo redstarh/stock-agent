@@ -7,13 +7,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.core.config import settings
+from app.core.scope_loader import load_scope
 
 logger = logging.getLogger(__name__)
 
 COLLECTION_INTERVAL_MINUTES = 1
 
-# Top 10 Korean stocks for Naver search
-KR_SEARCH_QUERIES = [
+# 기본값 (scope 파일 미존재 시 fallback)
+_DEFAULT_KR_SEARCH_QUERIES = [
     ("삼성전자", "005930"),
     ("SK하이닉스", "000660"),
     ("현대차", "005380"),
@@ -25,6 +26,18 @@ KR_SEARCH_QUERIES = [
     ("기아", "000270"),
     ("POSCO홀딩스", "005490"),
 ]
+
+
+def _load_kr_search_queries() -> list[tuple[str, str]]:
+    """Scope 파일에서 검색 쿼리 로드. 실패 시 기본값 사용."""
+    scope = load_scope()
+    queries = scope.get("korean_market", {}).get("search_queries", [])
+    if queries:
+        return [(q["query"], q["stock_code"]) for q in queries]
+    return _DEFAULT_KR_SEARCH_QUERIES
+
+
+KR_SEARCH_QUERIES = _load_kr_search_queries()
 
 
 def _collect_kr_news_job():

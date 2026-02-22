@@ -1,24 +1,32 @@
 """뉴스 스코어링 엔진.
 
-최종 점수 = Recency * 0.4 + Frequency * 0.3 + Sentiment * 0.2 + Disclosure * 0.1
+최종 점수 = Recency * W_R + Frequency * W_F + Sentiment * W_S + Disclosure * W_D
 
 각 요소는 0-100 범위로 정규화.
+가중치 및 파라미터는 docs/NewsCollectionScope.md에서 로드.
 """
 
 import math
 from datetime import UTC, datetime
 
+from app.core.scope_loader import load_scope
+
+# Scope에서 스코어링 설정 로드
+_scope = load_scope()
+_scoring_cfg = _scope.get("scoring", {})
+_weights = _scoring_cfg.get("weights", {})
+
 # 가중치
-W_RECENCY = 0.4
-W_FREQUENCY = 0.3
-W_SENTIMENT = 0.2
-W_DISCLOSURE = 0.1
+W_RECENCY = _weights.get("recency", 0.4)
+W_FREQUENCY = _weights.get("frequency", 0.3)
+W_SENTIMENT = _weights.get("sentiment", 0.2)
+W_DISCLOSURE = _weights.get("disclosure", 0.1)
 
 # Recency 반감기 (시간)
-RECENCY_HALF_LIFE_HOURS = 24.0
+RECENCY_HALF_LIFE_HOURS = _scoring_cfg.get("recency_half_life_hours", 24.0)
 
 # Frequency 상한 뉴스 건수
-FREQUENCY_MAX_COUNT = 50
+FREQUENCY_MAX_COUNT = _scoring_cfg.get("frequency_max_count", 50)
 
 
 def calc_recency(

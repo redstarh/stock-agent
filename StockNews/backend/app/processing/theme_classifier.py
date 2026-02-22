@@ -1,11 +1,13 @@
 """키워드 기반 테마 분류기.
 
 뉴스 제목/본문에서 투자 테마를 추출.
-MVP에서는 키워드 사전 기반; 추후 LLM 분류로 확장.
+키워드 사전은 docs/NewsCollectionScope.md에서 로드하며, LLM 분류 fallback으로 사용.
 """
 
-# 테마 키워드 사전: {테마명: [키워드 리스트]}
-THEME_KEYWORDS: dict[str, list[str]] = {
+from app.core.scope_loader import load_scope
+
+# 기본값 (scope 파일 미존재 시 fallback)
+_DEFAULT_THEME_KEYWORDS: dict[str, list[str]] = {
     "AI": ["AI", "인공지능", "딥러닝", "머신러닝", "GPT", "LLM", "생성형"],
     "반도체": ["반도체", "HBM", "파운드리", "메모리", "D램", "DRAM", "낸드", "NAND"],
     "2차전지": ["2차전지", "배터리", "양극재", "음극재", "전해질", "리튬", "전고체"],
@@ -23,6 +25,19 @@ THEME_KEYWORDS: dict[str, list[str]] = {
     "철강": ["철강", "포스코", "고로", "전기로"],
     "항공": ["항공", "여행", "관광", "면세"],
 }
+
+
+def _load_theme_keywords() -> dict[str, list[str]]:
+    """Scope 파일에서 테마 키워드 로드. 실패 시 기본값 사용."""
+    scope = load_scope()
+    themes = scope.get("themes", {})
+    if themes:
+        return themes
+    return _DEFAULT_THEME_KEYWORDS
+
+
+# 테마 키워드 사전: {테마명: [키워드 리스트]}
+THEME_KEYWORDS: dict[str, list[str]] = _load_theme_keywords()
 
 
 def classify_theme(text: str) -> list[str]:

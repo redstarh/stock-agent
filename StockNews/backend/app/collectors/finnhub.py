@@ -7,11 +7,16 @@ from datetime import UTC, datetime, timedelta
 import httpx
 
 from app.core.config import settings
+from app.core.scope_loader import load_scope
 from app.processing.us_stock_mapper import extract_tickers_from_text
 
 logger = logging.getLogger(__name__)
 
 FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
+
+# Scope에서 기본 카테고리 로드
+_scope = load_scope()
+_FINNHUB_CATEGORY = _scope.get("us_market", {}).get("finnhub", {}).get("category", "general")
 
 
 class FinnhubCollector:
@@ -22,7 +27,7 @@ class FinnhubCollector:
         self.base_delay = base_delay
         self.api_key = settings.finnhub_api_key
 
-    async def collect(self, category: str = "general", min_id: int = 0) -> list[dict]:
+    async def collect(self, category: str = _FINNHUB_CATEGORY, min_id: int = 0) -> list[dict]:
         """Finnhub general/market news 수집."""
         if not self.api_key:
             logger.warning("Finnhub API key not set, skipping")

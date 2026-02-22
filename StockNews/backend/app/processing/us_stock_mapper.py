@@ -1,7 +1,12 @@
-"""미국 종목 ticker ↔ 종목명 매핑."""
+"""미국 종목 ticker ↔ 종목명 매핑.
 
-# Top 50 US stocks by market cap
-US_STOCK_MAP: dict[str, str] = {
+종목 사전은 docs/NewsCollectionScope.md에서 로드하며, fallback으로 내장 사전 사용.
+"""
+
+from app.core.scope_loader import load_scope
+
+# 기본값 (scope 파일 미존재 시 fallback)
+_DEFAULT_US_STOCK_MAP: dict[str, str] = {
     "AAPL": "Apple",
     "MSFT": "Microsoft",
     "GOOGL": "Alphabet",
@@ -53,6 +58,19 @@ US_STOCK_MAP: dict[str, str] = {
     "MMM": "3M",
     "PYPL": "PayPal",
 }
+
+
+def _load_us_stock_map() -> dict[str, str]:
+    """Scope 파일에서 미국 종목 사전 로드. 실패 시 기본값 사용."""
+    scope = load_scope()
+    stocks = scope.get("us_stocks", {})
+    if stocks:
+        return stocks
+    return _DEFAULT_US_STOCK_MAP
+
+
+# Top 50 US stocks by market cap
+US_STOCK_MAP: dict[str, str] = _load_us_stock_map()
 
 _REVERSE_MAP = {v.lower(): k for k, v in US_STOCK_MAP.items()}
 

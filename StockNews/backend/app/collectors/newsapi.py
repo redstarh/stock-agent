@@ -6,11 +6,19 @@ import logging
 import httpx
 
 from app.core.config import settings
+from app.core.scope_loader import load_scope
 from app.processing.us_stock_mapper import extract_tickers_from_text
 
 logger = logging.getLogger(__name__)
 
 NEWSAPI_BASE_URL = "https://newsapi.org/v2"
+
+# Scope에서 기본값 로드
+_scope = load_scope()
+_newsapi_cfg = _scope.get("us_market", {}).get("newsapi", {})
+_NEWSAPI_DEFAULT_QUERY = _newsapi_cfg.get("default_query", "stock market")
+_NEWSAPI_DEFAULT_LANGUAGE = _newsapi_cfg.get("language", "en")
+_NEWSAPI_DEFAULT_PAGE_SIZE = _newsapi_cfg.get("page_size", 20)
 
 
 class NewsAPICollector:
@@ -23,9 +31,9 @@ class NewsAPICollector:
 
     async def collect(
         self,
-        query: str = "stock market",
-        language: str = "en",
-        page_size: int = 20,
+        query: str = _NEWSAPI_DEFAULT_QUERY,
+        language: str = _NEWSAPI_DEFAULT_LANGUAGE,
+        page_size: int = _NEWSAPI_DEFAULT_PAGE_SIZE,
     ) -> list[dict]:
         """뉴스 검색."""
         if not self.api_key:

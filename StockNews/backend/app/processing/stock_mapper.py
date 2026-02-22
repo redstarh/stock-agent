@@ -1,11 +1,13 @@
 """종목명 ↔ 종목코드 매핑.
 
 KOSPI/KOSDAQ 주요 종목 사전 기반 매핑.
-MVP에서는 하드코딩 사전 사용; 추후 KRX API 또는 CSV 연동 가능.
+종목 사전은 docs/NewsCollectionScope.md에서 로드하며, fallback으로 내장 사전 사용.
 """
 
-# 종목 사전: {종목명: 종목코드}
-STOCK_DICT: dict[str, str] = {
+from app.core.scope_loader import load_scope
+
+# 기본값 (scope 파일 미존재 시 fallback)
+_DEFAULT_STOCK_DICT: dict[str, str] = {
     # KOSPI 대형주 Top 50
     "삼성전자": "005930",
     "삼성전자우": "005935",
@@ -73,6 +75,19 @@ STOCK_DICT: dict[str, str] = {
     "펄어비스": "263750",
     "CJ ENM": "035760",
 }
+
+
+def _load_stock_dict() -> dict[str, str]:
+    """Scope 파일에서 한국 종목 사전 로드. 실패 시 기본값 사용."""
+    scope = load_scope()
+    stocks = scope.get("korean_stocks", {})
+    if stocks:
+        return stocks
+    return _DEFAULT_STOCK_DICT
+
+
+# 종목 사전: {종목명: 종목코드}
+STOCK_DICT: dict[str, str] = _load_stock_dict()
 
 # 영문명 → 코드 (대소문자 무시 매핑용)
 _ENGLISH_MAP: dict[str, str] = {

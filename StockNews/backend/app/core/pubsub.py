@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
+from app.core.scope_loader import load_scope
 from app.schemas.pubsub import BreakingNewsMessage, Market, validate_message
 
 if TYPE_CHECKING:
@@ -13,8 +14,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-CHANNEL_PREFIX = "news_breaking_"
-BREAKING_THRESHOLD = 80.0
+# Scope에서 속보 설정 로드
+_scope = load_scope()
+_breaking_cfg = _scope.get("breaking_news", {})
+
+CHANNEL_PREFIX = _breaking_cfg.get("channel_prefix", "news_breaking_")
+BREAKING_THRESHOLD = _breaking_cfg.get("threshold", 80.0)
 
 
 def get_channel_name(market: str) -> str:
