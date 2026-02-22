@@ -1,8 +1,7 @@
 """뉴스 수집 파이프라인 테스트."""
 
+
 import pytest
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 @pytest.fixture
@@ -31,16 +30,10 @@ def sample_items():
 @pytest.fixture
 def mock_pipeline_deps(monkeypatch):
     """파이프라인 외부 의존성 mock."""
-    # Mock sentiment analysis
+    # Mock unified analyzer (single LLM call)
     monkeypatch.setattr(
-        "app.processing.sentiment.call_llm",
-        lambda sys, usr, **kw: '{"sentiment": "positive", "score": 0.8, "confidence": 0.9}',
-    )
-
-    # Mock summary
-    monkeypatch.setattr(
-        "app.processing.summary.call_llm",
-        lambda sys, usr, **kw: '{"summary": "테스트 요약"}',
+        "app.processing.unified_analyzer.call_llm",
+        lambda sys, usr, **kw: '{"sentiment": "positive", "score": 0.8, "confidence": 0.9, "themes": [], "summary": "테스트 요약", "kr_impact": []}',
     )
 
     # Mock Redis (unavailable)
@@ -90,7 +83,6 @@ class TestProcessCollectedItems:
     async def test_dedup_filters_duplicates(self, db_session, sample_items, mock_pipeline_deps, monkeypatch):
         """중복 아이템 필터링."""
         from app.collectors.pipeline import process_collected_items
-        from app.models.news_event import NewsEvent
 
         async def mock_scrape(items):
             return {item.get("source_url", ""): None for item in items}
@@ -106,7 +98,7 @@ class TestProcessCollectedItems:
 
     @pytest.mark.asyncio
     async def test_item_failure_falls_back_to_neutral(self, db_session, mock_pipeline_deps, monkeypatch):
-        """감성분석 실패 시 neutral fallback으로 저장."""
+        """통합 분석 실패 시 neutral fallback으로 저장."""
         from app.collectors.pipeline import process_collected_items
         from app.models.news_event import NewsEvent
 
@@ -129,14 +121,21 @@ class TestProcessCollectedItems:
 
         call_count = 0
 
-        def failing_sentiment(text, body=None):
+        def failing_analyze(title, body=None, market="KR"):
             nonlocal call_count
             call_count += 1
             if call_count == 2:
                 raise RuntimeError("LLM error")
-            return {"sentiment": "positive", "score": 0.8, "confidence": 0.9}
+            return {
+                "sentiment": "positive",
+                "sentiment_score": 0.8,
+                "confidence": 0.9,
+                "themes": [],
+                "summary": "",
+                "kr_impact_themes": [],
+            }
 
-        monkeypatch.setattr("app.collectors.pipeline.analyze_sentiment", failing_sentiment)
+        monkeypatch.setattr("app.collectors.pipeline.analyze_news", failing_analyze)
 
         async def mock_scrape(items):
             return {item.get("source_url", ""): None for item in items}
@@ -151,20 +150,17 @@ class TestProcessCollectedItems:
     @pytest.mark.asyncio
     async def test_breaking_news_published(self, db_session, sample_items, monkeypatch):
         """점수 >= 80이면 Redis 속보 발행 시도."""
-        from app.collectors.pipeline import process_collected_items
         import fakeredis
+
+        from app.collectors.pipeline import process_collected_items
 
         fake_redis = fakeredis.FakeRedis()
         monkeypatch.setattr("app.collectors.pipeline._get_redis_client", lambda: fake_redis)
 
-        # Mock sentiment to return high score
+        # Mock unified analyzer to return high score
         monkeypatch.setattr(
-            "app.processing.sentiment.call_llm",
-            lambda sys, usr, **kw: '{"sentiment": "positive", "score": 0.95, "confidence": 0.99}',
-        )
-        monkeypatch.setattr(
-            "app.processing.summary.call_llm",
-            lambda sys, usr, **kw: '{"summary": "테스트"}',
+            "app.processing.unified_analyzer.call_llm",
+            lambda sys, usr, **kw: '{"sentiment": "positive", "score": 0.95, "confidence": 0.99, "themes": [], "summary": "테스트", "kr_impact": []}',
         )
 
         async def mock_scrape(items):

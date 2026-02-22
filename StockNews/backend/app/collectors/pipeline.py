@@ -4,18 +4,17 @@ import contextlib
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.news_event import NewsEvent
 from app.processing.article_scraper import ArticleScraper
 from app.processing.dedup import deduplicate
-from app.processing.sentiment import analyze_sentiment
 from app.processing.stock_mapper import code_to_name, extract_stock_codes
-from app.processing.summary import summarize_news
-from app.processing.theme_classifier import classify_theme
+from app.processing.unified_analyzer import analyze_news
 from app.processing.us_stock_mapper import extract_tickers_from_text
 from app.scoring.engine import (
     calc_disclosure,
@@ -54,6 +53,22 @@ def _map_stock_code(item: dict) -> str:
         return codes[0] if codes else ""
 
 
+def _get_news_frequency(db: Session, stock_code: str) -> int:
+    """해당 종목의 최근 24시간 뉴스 건수 조회."""
+    if not stock_code:
+        return 1
+    try:
+        cutoff = datetime.now(UTC) - timedelta(hours=24)
+        count = db.query(sa_func.count(NewsEvent.id)).filter(
+            NewsEvent.stock_code == stock_code,
+            NewsEvent.published_at >= cutoff,
+        ).scalar()
+        return max(1, count or 1)
+    except Exception as e:
+        logger.warning("Frequency query failed: %s", e)
+        return 1
+
+
 def _get_redis_client():
     """Redis 클라이언트 생성. 연결 실패 시 None 반환."""
     try:
@@ -67,50 +82,8 @@ def _get_redis_client():
 
 
 def _analyze_single(title: str, body: str | None, market: str = "KR") -> dict:
-    """단일 아이템의 LLM 분석 (감성 + 테마 + 요약). Thread-safe."""
-    # 감성 분석 (Sonnet 4 via mid model)
-    try:
-        sentiment_result = analyze_sentiment(title, body)
-    except Exception as e:
-        logger.warning("Sentiment failed: %s", e)
-        sentiment_result = {"sentiment": "neutral", "score": 0.0, "confidence": 0.0}
-
-    # 테마 분류 (LLM 기반, Opus 모델 — 키워드 fallback)
-    try:
-        from app.core.config import settings
-        from app.processing.llm_theme_classifier import classify_theme_llm
-        themes = classify_theme_llm(title, body, model_id=settings.bedrock_model_id)
-    except Exception as e:
-        logger.warning("LLM theme failed, keyword fallback: %s", e)
-        combined_text = title
-        if body:
-            combined_text += " " + body[:500]
-        themes = classify_theme(combined_text)
-
-    # 뉴스 요약 (Opus via default model)
-    summary = ""
-    if body:
-        try:
-            summary = summarize_news(title, body)
-        except Exception as e:
-            logger.warning("Summary failed: %s", e)
-
-    # Cross-market 영향 분석 (US 뉴스만)
-    kr_impact_themes = []
-    if market == "US":
-        try:
-            from app.processing.cross_market import analyze_kr_impact
-            kr_impact_themes = analyze_kr_impact(title, body)
-        except Exception as e:
-            logger.warning("Cross-market analysis failed: %s", e)
-
-    return {
-        "sentiment": sentiment_result["sentiment"],
-        "sentiment_score": sentiment_result["score"],
-        "themes": themes,
-        "summary": summary,
-        "kr_impact_themes": kr_impact_themes,
-    }
+    """단일 아이템의 통합 LLM 분석 (1회 호출). Thread-safe."""
+    return analyze_news(title, body, market)
 
 
 async def process_collected_items(
@@ -224,7 +197,8 @@ async def process_collected_items(
             kr_impact_json = json.dumps(analysis.get("kr_impact_themes", []), ensure_ascii=False) if analysis.get("kr_impact_themes") else None
 
             recency = calc_recency(p["published_at"])
-            frequency = calc_frequency(1)
+            news_count = _get_news_frequency(db, p["stock_code"])
+            frequency = calc_frequency(news_count)
             sent_score = calc_sentiment_score(sentiment, sentiment_score)
             disc_score = calc_disclosure(p["is_disclosure"])
             news_score = calc_news_score(recency, frequency, sent_score, disc_score)
