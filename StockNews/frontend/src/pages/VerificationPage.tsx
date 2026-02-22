@@ -122,7 +122,7 @@ export default function VerificationPage() {
           predicted_score: predictedScore,
           confidence: predictedScore,
           actual_direction: label?.label ? mapDirection(label.label) : null,
-          actual_change_pct: label?.realized_ret ?? null,
+          actual_change_pct: label?.realized_ret != null ? label.realized_ret * 100 : null,
           is_correct: label?.is_correct ?? null,
           news_count: 0, // Not applicable for Advan
           error_message: null,

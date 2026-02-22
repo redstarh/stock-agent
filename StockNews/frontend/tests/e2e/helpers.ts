@@ -190,6 +190,216 @@ export const mockThemeAccuracy = {
   ],
 };
 
+// Advan Simulation Mock Data
+export const mockAdvanRuns = [
+  {
+    id: 1,
+    name: '테스트 시뮬레이션',
+    market: 'KR',
+    policy_id: 1,
+    status: 'completed',
+    date_from: '2026-02-01',
+    date_to: '2026-02-18',
+    total_predictions: 50,
+    correct_count: 37,
+    abstain_count: 5,
+    accuracy_rate: 0.822,
+    created_at: '2026-02-18T10:00:00',
+  },
+  {
+    id: 2,
+    name: '검증 시뮬레이션 #2',
+    market: 'KR',
+    policy_id: 1,
+    status: 'completed',
+    date_from: '2026-02-05',
+    date_to: '2026-02-15',
+    total_predictions: 40,
+    correct_count: 30,
+    abstain_count: 3,
+    accuracy_rate: 0.811,
+    created_at: '2026-02-15T14:30:00',
+  },
+];
+
+export const mockAdvanRunDetail = {
+  run: mockAdvanRuns[0],
+  predictions: [
+    {
+      id: 1,
+      ticker: '005930',
+      prediction: 'Up',
+      p_up: 0.82,
+      p_down: 0.10,
+      p_flat: 0.08,
+      run_id: 1,
+    },
+    {
+      id: 2,
+      ticker: '000660',
+      prediction: 'Up',
+      p_up: 0.75,
+      p_down: 0.15,
+      p_flat: 0.10,
+      run_id: 1,
+    },
+    {
+      id: 3,
+      ticker: '035420',
+      prediction: 'Down',
+      p_up: 0.20,
+      p_down: 0.68,
+      p_flat: 0.12,
+      run_id: 1,
+    },
+    {
+      id: 4,
+      ticker: '051910',
+      prediction: 'Flat',
+      p_up: 0.30,
+      p_down: 0.30,
+      p_flat: 0.40,
+      run_id: 1,
+    },
+    {
+      id: 5,
+      ticker: '005380',
+      prediction: 'Up',
+      p_up: 0.71,
+      p_down: 0.20,
+      p_flat: 0.09,
+      run_id: 1,
+    },
+  ],
+  labels: [
+    {
+      id: 1,
+      prediction_id: 1,
+      label: 'Up',
+      realized_ret: 0.023,
+      is_correct: true,
+    },
+    {
+      id: 2,
+      prediction_id: 2,
+      label: 'Down',
+      realized_ret: -0.012,
+      is_correct: false,
+    },
+    {
+      id: 3,
+      prediction_id: 3,
+      label: 'Down',
+      realized_ret: -0.008,
+      is_correct: true,
+    },
+    {
+      id: 4,
+      prediction_id: 4,
+      label: 'Flat',
+      realized_ret: 0.001,
+      is_correct: true,
+    },
+    {
+      id: 5,
+      prediction_id: 5,
+      label: 'Up',
+      realized_ret: 0.015,
+      is_correct: true,
+    },
+  ],
+  direction_stats: {
+    Up: { total: 20, correct: 16, accuracy: 0.80 },
+    Down: { total: 15, correct: 12, accuracy: 0.80 },
+    Flat: { total: 10, correct: 9, accuracy: 0.90 },
+  },
+};
+
+export const mockAdvanByStock = [
+  {
+    stock_code: '005930',
+    stock_name: '삼성전자',
+    total: 5,
+    correct: 4,
+    accuracy: 0.80,
+    latest_prediction: 'Up',
+    latest_label: 'Up',
+    latest_realized_ret: 0.023,
+    by_direction: { Up: { total: 3, correct: 3 }, Down: { total: 2, correct: 1 } },
+  },
+  {
+    stock_code: '000660',
+    stock_name: 'SK하이닉스',
+    total: 4,
+    correct: 3,
+    accuracy: 0.75,
+    latest_prediction: 'Up',
+    latest_label: 'Down',
+    latest_realized_ret: -0.012,
+    by_direction: { Up: { total: 2, correct: 1 }, Down: { total: 2, correct: 2 } },
+  },
+  {
+    stock_code: '035420',
+    stock_name: 'NAVER',
+    total: 3,
+    correct: 2,
+    accuracy: 0.667,
+    latest_prediction: 'Down',
+    latest_label: 'Down',
+    latest_realized_ret: -0.008,
+    by_direction: { Down: { total: 2, correct: 2 }, Flat: { total: 1, correct: 0 } },
+  },
+  {
+    stock_code: '051910',
+    stock_name: 'LG화학',
+    total: 2,
+    correct: 2,
+    accuracy: 1.0,
+    latest_prediction: 'Flat',
+    latest_label: 'Flat',
+    latest_realized_ret: 0.001,
+    by_direction: { Flat: { total: 2, correct: 2 } },
+  },
+  {
+    stock_code: '005380',
+    stock_name: '현대차',
+    total: 3,
+    correct: 3,
+    accuracy: 1.0,
+    latest_prediction: 'Up',
+    latest_label: 'Up',
+    latest_realized_ret: 0.015,
+    by_direction: { Up: { total: 3, correct: 3 } },
+  },
+];
+
+export const mockAdvanByTheme = [
+  {
+    theme: '반도체',
+    total_stocks: 12,
+    correct_count: 9,
+    accuracy_rate: 75.0,
+  },
+  {
+    theme: '2차전지',
+    total_stocks: 8,
+    correct_count: 5,
+    accuracy_rate: 62.5,
+  },
+  {
+    theme: 'AI/로봇',
+    total_stocks: 6,
+    correct_count: 5,
+    accuracy_rate: 83.3,
+  },
+  {
+    theme: '자동차',
+    total_stocks: 10,
+    correct_count: 7,
+    accuracy_rate: 70.0,
+  },
+];
+
 /** Set up API route mocks for all endpoints */
 export async function setupApiMocks(page: Page) {
   await page.route('**/api/v1/news/top*', async (route) => {
@@ -226,5 +436,34 @@ export async function setupApiMocks(page: Page) {
 
   await page.route('**/api/v1/verification/themes*', async (route) => {
     await route.fulfill({ json: mockThemeAccuracy });
+  });
+
+  // Advan API endpoints
+  await page.route('**/api/v1/advan/runs?*', async (route) => {
+    await route.fulfill({ json: mockAdvanRuns });
+  });
+
+  await page.route('**/api/v1/advan/runs/1/by-stock', async (route) => {
+    await route.fulfill({ json: mockAdvanByStock });
+  });
+
+  await page.route('**/api/v1/advan/runs/1/by-theme', async (route) => {
+    await route.fulfill({ json: mockAdvanByTheme });
+  });
+
+  await page.route('**/api/v1/advan/runs/1', async (route) => {
+    await route.fulfill({ json: mockAdvanRunDetail });
+  });
+
+  await page.route('**/api/v1/advan/runs/2/by-stock', async (route) => {
+    await route.fulfill({ json: mockAdvanByStock });
+  });
+
+  await page.route('**/api/v1/advan/runs/2/by-theme', async (route) => {
+    await route.fulfill({ json: mockAdvanByTheme });
+  });
+
+  await page.route('**/api/v1/advan/runs/2', async (route) => {
+    await route.fulfill({ json: { ...mockAdvanRunDetail, run: mockAdvanRuns[1] } });
   });
 }
