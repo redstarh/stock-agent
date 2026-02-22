@@ -1,7 +1,7 @@
 # StockNews Application Structure
 # Single Source of Truth for project architecture
 # Update this file when modules/packages/pages are added, deleted, or moved
-# Last updated: 2026-02-22
+# Last updated: 2026-02-22 (v3.1 — streaming pipeline, unified LLM, fast-path breaking news)
 
 project:
   name: StockNews
@@ -123,9 +123,9 @@ backend:
         - name: "yfinance_middleware.py"
           description: "yFinance data bridge"
         - name: "pipeline.py"
-          description: "Orchestrates collect → dedup → sentiment → score → save → publish"
+          description: "Streaming pipeline: per-item async (scrape→analyze→score→save→publish) with Semaphore(10), fast-path keyword breaking news, unified LLM analyzer"
         - name: "scheduler.py"
-          description: "APScheduler job definitions for KR/DART/US collection"
+          description: "APScheduler jobs — KR merged (Naver+RSS→single pipeline), DART, US(Finnhub). Loads queries from scope"
         - name: "verification_scheduler.py"
           description: "Scheduled verification jobs"
 
@@ -133,17 +133,20 @@ backend:
       description: "NLP, Feature Engineering, ML Pipeline"
       path: "app/processing/"
       modules:
-        # NLP
+        # NLP — Unified Analyzer (primary)
+        - name: "unified_analyzer.py"
+          description: "Unified LLM analyzer — 1 call for sentiment+theme+summary+cross-market (replaces individual analyzers). Loads themes from scope"
+        # NLP — Legacy individual analyzers (kept for backward compatibility)
         - name: "sentiment.py"
-          description: "LLM-based sentiment analysis (Bedrock/OpenAI)"
+          description: "LLM-based sentiment analysis (Bedrock/OpenAI) — superseded by unified_analyzer"
         - name: "summary.py"
-          description: "News summarization (LLM)"
+          description: "News summarization (LLM) — superseded by unified_analyzer"
         - name: "llm_theme_classifier.py"
-          description: "Theme classification (금융, 정책, 기술 등)"
+          description: "Theme classification — superseded by unified_analyzer"
         - name: "article_scraper.py"
-          description: "Article content extraction"
+          description: "Article content extraction (async scrape_one per item)"
         - name: "dedup.py"
-          description: "Duplicate detection (URL-first, then title-match)"
+          description: "Duplicate detection — URL + title within batch, then DB check"
         # Stock Mapping
         - name: "stock_mapper.py"
           description: "Korean stock code mapping (005930 → 삼성전자)"
@@ -233,7 +236,7 @@ backend:
       path: "app/scoring/"
       modules:
         - name: "engine.py"
-          description: "Weighted score: 0.4×Recency + 0.3×Frequency + 0.2×Sentiment + 0.1×Disclosure"
+          description: "Weighted score: 0.4×Recency + 0.3×Frequency + 0.2×Sentiment + 0.1×Disclosure. Weights loaded from scope"
         - name: "aggregator.py"
           description: "Aggregate news scores by theme"
 
@@ -248,7 +251,7 @@ backend:
         - name: "redis.py"
           description: "Redis client management"
         - name: "pubsub.py"
-          description: "Redis Pub/Sub publish/subscribe for breaking news"
+          description: "Redis Pub/Sub publish/subscribe for breaking news. Threshold and channels loaded from scope"
         - name: "auth.py"
           description: "API key authentication"
         - name: "logging.py"
@@ -263,6 +266,8 @@ backend:
           description: "SlowAPI rate limiting"
         - name: "llm.py"
           description: "LLM client (OpenAI/Bedrock)"
+        - name: "scope_loader.py"
+          description: "NewsCollectionScope.md YAML front matter parser (lru_cache, Single Source of Truth)"
         - name: "secrets.py"
           description: "AWS Secrets Manager integration"
 
@@ -273,6 +278,8 @@ backend:
       description: "Alembic migration configuration"
     - path: "ruff.toml"
       description: "Ruff linter config (py313, E/F/I/N/W/UP/B/SIM rules)"
+    - path: "docs/NewsCollectionScope.md"
+      description: "Collection scope YAML — search queries, RSS feeds, scoring weights, themes, intervals (Single Source of Truth)"
 
   middleware_stack:
     - name: "CORS"
@@ -443,7 +450,7 @@ tests:
         scoring: ["test_scoring.py", "test_aggregator.py"]
         nlp: ["test_sentiment.py", "test_sentiment_accuracy.py", "test_summary.py", "test_auto_summarize.py", "test_article_scraper.py", "test_theme_classifier.py", "test_theme_aggregator.py", "test_cross_theme_scorer.py"]
         mapping: ["test_stock_mapper.py", "test_us_stock_mapper.py"]
-        collection: ["test_pipeline.py", "test_scheduler_jobs.py", "test_price_collector.py", "test_price_fetcher.py", "test_market_indicator_collector.py", "test_yfinance_middleware.py"]
+        collection: ["test_pipeline.py", "test_scheduler_jobs.py", "test_price_collector.py", "test_price_fetcher.py", "test_market_indicator_collector.py", "test_yfinance_middleware.py", "test_unified_analyzer.py"]
         ml: ["test_ml_model_enhanced.py", "test_ml_trainer.py", "test_ml_evaluator.py", "test_ml_optimization.py", "test_model_registry.py", "test_feature_engineer.py", "test_feature_validator.py", "test_feature_config.py", "test_technical_indicators.py", "test_data_alignment.py"]
         prediction: ["test_prediction.py", "test_prediction_schema.py", "test_prediction_context_builder.py", "test_prediction_context_api.py", "test_llm_predictor.py", "test_llm.py"]
         training: ["test_training_data_builder.py", "test_training_backfill.py"]
@@ -605,10 +612,10 @@ integrations:
         module: "collectors/dart.py"
     us_news:
       - name: "Finnhub"
-        type: "market news API"
+        type: "market news API (sole US source)"
         module: "collectors/finnhub.py"
       - name: "NewsAPI"
-        type: "news aggregation API"
+        type: "news aggregation API (inactive — removed from scheduler)"
         module: "collectors/newsapi.py"
     market_data:
       - name: "yfinance"
