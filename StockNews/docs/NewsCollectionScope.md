@@ -41,6 +41,56 @@ dart:
   # DART 공시는 전체 공시를 수집 후 stock_mapper로 필터링
   page_count: 100
 
+# RSS 피드 목록
+rss_feeds:
+  korean:
+    - url: "https://www.yna.co.kr/rss/economy.xml"
+      source_name: "rss:연합뉴스_경제"
+      market: "KR"
+    - url: "https://www.yna.co.kr/rss/industry.xml"
+      source_name: "rss:연합뉴스_산업"
+      market: "KR"
+    - url: "https://www.hankyung.com/feed/stock"
+      source_name: "rss:한국경제_증권"
+      market: "KR"
+    - url: "https://www.hankyung.com/feed/finance"
+      source_name: "rss:한국경제_금융"
+      market: "KR"
+    - url: "https://www.mk.co.kr/rss/30100041/"
+      source_name: "rss:매일경제_증권"
+      market: "KR"
+    - url: "https://www.mk.co.kr/rss/30000001/"
+      source_name: "rss:매일경제_경제"
+      market: "KR"
+    - url: "https://www.sedaily.com/RSS/Stock"
+      source_name: "rss:서울경제_증권"
+      market: "KR"
+    - url: "https://rss.edaily.co.kr/edaily/ECONOMY"
+      source_name: "rss:이데일리_경제"
+      market: "KR"
+    - url: "https://rss.edaily.co.kr/edaily/STOCK"
+      source_name: "rss:이데일리_증권"
+      market: "KR"
+    - url: "https://mt.co.kr/rss/stock.xml"
+      source_name: "rss:머니투데이_증권"
+      market: "KR"
+  us:
+    - url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147"
+      source_name: "rss:CNBC_Top_News"
+      market: "US"
+    - url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839135"
+      source_name: "rss:CNBC_Finance"
+      market: "US"
+    - url: "https://feeds.marketwatch.com/marketwatch/topstories"
+      source_name: "rss:MarketWatch"
+      market: "US"
+    - url: "https://feeds.marketwatch.com/marketwatch/StockstoWatch"
+      source_name: "rss:MarketWatch_Stocks"
+      market: "US"
+    - url: "https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US"
+      source_name: "rss:Yahoo_Finance_SP500"
+      market: "US"
+
 # 투자 테마 키워드 사전
 themes:
   AI:
@@ -349,8 +399,33 @@ breaking_news:
 
 | 소스 | 범용 RSS 파서 |
 |------|---------------|
-| 피드 URL | 런타임 파라미터로 전달 (하드코딩 없음) |
-| 시장 구분 | 호출 시 `market` 파라미터로 지정 |
+| 수집 주기 | 한국 KR: 1분 (Naver와 동일), US: 3분 (Finnhub와 동일) |
+| 피드 목록 | YAML `rss_feeds` 섹션 참조 |
+
+#### 한국 RSS 피드 (10개)
+
+| # | 소스 | 피드 URL |
+|---|------|----------|
+| 1 | 연합뉴스 경제 | `https://www.yna.co.kr/rss/economy.xml` |
+| 2 | 연합뉴스 산업 | `https://www.yna.co.kr/rss/industry.xml` |
+| 3 | 한국경제 증권 | `https://www.hankyung.com/feed/stock` |
+| 4 | 한국경제 금융 | `https://www.hankyung.com/feed/finance` |
+| 5 | 매일경제 증권 | `https://www.mk.co.kr/rss/30100041/` |
+| 6 | 매일경제 경제 | `https://www.mk.co.kr/rss/30000001/` |
+| 7 | 서울경제 증권 | `https://www.sedaily.com/RSS/Stock` |
+| 8 | 이데일리 경제 | `https://rss.edaily.co.kr/edaily/ECONOMY` |
+| 9 | 이데일리 증권 | `https://rss.edaily.co.kr/edaily/STOCK` |
+| 10 | 머니투데이 증권 | `https://mt.co.kr/rss/stock.xml` |
+
+#### 미국 RSS 피드 (5개)
+
+| # | 소스 | 피드 URL |
+|---|------|----------|
+| 1 | CNBC Top News | `https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147` |
+| 2 | CNBC Finance | `https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839135` |
+| 3 | MarketWatch Top | `https://feeds.marketwatch.com/marketwatch/topstories` |
+| 4 | MarketWatch Stocks | `https://feeds.marketwatch.com/marketwatch/StockstoWatch` |
+| 5 | Yahoo Finance S&P500 | `https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US` |
 
 ## 2. 종목 사전
 

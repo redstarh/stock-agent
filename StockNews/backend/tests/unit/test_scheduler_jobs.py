@@ -142,8 +142,8 @@ class TestCollectUsNewsJob:
 class TestCreateScheduler:
     """create_scheduler() 테스트."""
 
-    def test_creates_scheduler_with_three_jobs(self):
-        """3개 job이 등록된 스케줄러 생성."""
+    def test_creates_scheduler_with_jobs(self):
+        """기본 3개 + RSS job이 등록된 스케줄러 생성."""
         from app.collectors.scheduler import create_scheduler
         scheduler = create_scheduler()
 
@@ -153,4 +153,5 @@ class TestCreateScheduler:
         assert "kr_news_collection" in job_ids
         assert "dart_disclosure_collection" in job_ids
         assert "us_news_collection" in job_ids
-        assert len(jobs) == 3
+        # RSS jobs are added when scope file has feed URLs
+        assert len(jobs) >= 3

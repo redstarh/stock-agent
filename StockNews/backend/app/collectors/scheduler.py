@@ -133,6 +133,65 @@ def _collect_us_news_job():
         logger.error("US news collection failed: %s", e)
 
 
+def _load_rss_feeds(market_key: str) -> list[dict]:
+    """Scope 파일에서 RSS 피드 목록 로드."""
+    scope = load_scope()
+    return scope.get("rss_feeds", {}).get(market_key, [])
+
+
+def _collect_rss_job(market_key: str):
+    """RSS 피드 수집 작업."""
+    feeds = _load_rss_feeds(market_key)
+    if not feeds:
+        logger.debug("No RSS feeds configured for %s, skipping", market_key)
+        return
+
+    market = "KR" if market_key == "korean" else "US"
+    logger.info("RSS collection started: %s (%d feeds)", market_key, len(feeds))
+
+    async def _run():
+        from app.collectors.pipeline import process_collected_items
+        from app.collectors.rss import RssCollector
+        from app.core.database import SessionLocal
+
+        collector = RssCollector()
+        all_items = []
+
+        for feed in feeds:
+            try:
+                items = await collector.collect(
+                    feed_url=feed["url"],
+                    source_name=feed.get("source_name", "rss"),
+                    market=feed.get("market", market),
+                )
+                all_items.extend(items)
+            except Exception as e:
+                logger.warning("RSS collect failed for %s: %s", feed["url"], e)
+
+        if all_items:
+            db = SessionLocal()
+            try:
+                count = await process_collected_items(db, all_items, market=market)
+                logger.info("RSS %s: %d items saved", market_key, count)
+            finally:
+                db.close()
+
+    try:
+        asyncio.run(_run())
+    except Exception as e:
+        logger.error("RSS %s collection failed: %s", market_key, e)
+
+
+def _collect_kr_rss_job():
+    """한국 RSS 피드 수집 작업."""
+    _collect_rss_job("korean")
+
+
+def _collect_us_rss_job():
+    """미국 RSS 피드 수집 작업."""
+    _collect_rss_job("us")
+
+
 def create_scheduler() -> BackgroundScheduler:
     """수집 스케줄러 생성 및 job 등록."""
     scheduler = BackgroundScheduler()
@@ -169,5 +228,29 @@ def create_scheduler() -> BackgroundScheduler:
         max_instances=1,
         misfire_grace_time=30,
     )
+
+    # Korean RSS feed collection job
+    if _load_rss_feeds("korean"):
+        scheduler.add_job(
+            _collect_kr_rss_job,
+            trigger=IntervalTrigger(minutes=settings.collection_interval_kr),
+            id="kr_rss_collection",
+            name="Korean RSS Collection Job",
+            replace_existing=True,
+            max_instances=1,
+            misfire_grace_time=30,
+        )
+
+    # US RSS feed collection job
+    if _load_rss_feeds("us"):
+        scheduler.add_job(
+            _collect_us_rss_job,
+            trigger=IntervalTrigger(minutes=settings.collection_interval_us),
+            id="us_rss_collection",
+            name="US RSS Collection Job",
+            replace_existing=True,
+            max_instances=1,
+            misfire_grace_time=30,
+        )
 
     return scheduler
