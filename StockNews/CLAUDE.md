@@ -96,7 +96,7 @@ All three phases are **complete and deployed**.
 - **Phase 2:** US market (Finnhub/NewsAPI), LLM sentiment tuning, news summary, scheduler optimization ✅
 - **Phase 3:** AI prediction model (Random Forest), prediction API, prediction dashboard ✅
 
-**Tests:** Backend 651 passed | Frontend 196 unit tests | E2E 18 tests | Build clean
+**Tests:** Backend 737 passed | Frontend 200 unit tests | E2E 37 tests | Build clean
 
 ## Development Commands
 
@@ -111,30 +111,22 @@ cd frontend && npx vitest run                          # Run frontend tests
 cd frontend && npm run dev                             # Start dev server (port 5173)
 ```
 
-### CI Lint Checks (push 전 필수 실행)
+### CI Verification (push 전 필수)
 
-CI workflow(`.github/workflows/test.yml`)에서 lint 통과가 필수입니다. 코드 변경 후 push 전에 반드시 확인하세요.
+CI workflow(`.github/workflows/test.yml`)를 통과해야 merge 가능합니다. Push 전에 lint와 테스트를 반드시 확인하세요.
 
 ```bash
-# Backend lint (ruff)
-cd backend && .venv/bin/ruff check app/
+# Backend
+cd backend && .venv/bin/ruff check app/               # lint
+cd backend && .venv/bin/python -m pytest -q            # tests
 
-# Frontend lint (eslint)
-cd frontend && npm run lint
+# Frontend
+cd frontend && npm run lint                             # lint
+cd frontend && npx tsc -b                               # type check (CI와 동일)
+cd frontend && npx vitest run                           # unit tests
 ```
 
-**자주 나오는 lint 에러와 해결법:**
-
-| 에러 | 해결 |
-|------|------|
-| `I001` Import un-sorted | `ruff check app/ --fix` 자동 수정 |
-| `F401` Unused import | 미사용 import 제거 |
-| `E741` Ambiguous variable `l` | `lb`, `label` 등으로 rename |
-| `E712` `== True` comparison | SQLAlchemy: `.is_(True)` 사용 |
-| `B904` raise without `from` | `raise ... from None` 추가 |
-| `@typescript-eslint/no-explicit-any` | `unknown` 또는 구체적 타입 사용 |
-| `@typescript-eslint/no-unused-vars` | 미사용 변수/import 제거 |
-| `react-hooks/set-state-in-effect` | `useEffect+setState` → `useMemo` 파생 상태 |
+Push 후 CI 실패 시, `gh run view <run-id> --log-failed`로 원인을 확인하고 수정하세요.
 
 ## Task Execution Best Practices
 
@@ -181,11 +173,7 @@ When working on multiple tasks in this project, follow these guidelines:
 1. **Read first** — Always read files before proposing changes
 2. **Group by dependency** — Identify shared files (API clients, hooks) to avoid conflicts
 3. **Backend before frontend** — When adding API parameters, update backend → API client → hooks → pages
-4. **Verify after changes** — Run `tsc --noEmit` + `vitest run` (frontend), `pytest -q` (backend)
-5. **Date filtering pattern** — Backend: add `date_str` Query param with alias; Frontend: add to hook queryKey for cache invalidation
-6. **Null safety** — Always use `(value ?? 0).toFixed()` for numeric display, `value ?? fallback` for optional fields
-7. **Chart performance** — Disable Recharts animation with `isAnimationActive={false}` for data-heavy charts
-8. **Date-dependent state** — Default date picker to latest date with data (use `useEffect` with API response), not `new Date()` which may have no data
+4. **Verify after changes** — Run CI verification commands (above) before push
 
 ## StockAgent Integration
 
